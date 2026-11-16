@@ -206,6 +206,12 @@ main {
 }
 .settings-row, .settings-panel .hint { grid-column: 1 / -1; }
 .settings-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.gpu { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 3px; }
+.gpu p { margin: 0; }
+.gpu-head { color: var(--ink-2); }
+#gpu-lines { font-variant-numeric: tabular-nums; }
+#gpu-lines span { color: var(--ink-2); }
+#gpu-lines b { font-weight: 700; }
 .mult-note { color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
 .mode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .mode-label { color: var(--ink-2); }
@@ -444,6 +450,11 @@ tr:last-child td { border-bottom: 0; }
           <span id="leg-warm" style="display:none"><span class="swatch sw-w"></span><span id="leg-warm-text">Newest token, warm cache</span></span>
         </div>
         <div class="models" id="model-buttons" aria-label="Models whose bill is drawn"></div>
+        <div class="gpu" id="gpu" aria-live="polite">
+          <p class="gpu-head">The same multiplications on one gaming graphics card</p>
+          <p id="gpu-lines"></p>
+          <p class="hint" id="gpu-hint"></p>
+        </div>
       </section>
 
     </div>
@@ -705,6 +716,40 @@ tr:last-child td { border-bottom: 0; }
     return "$" + ((t.split(".")[1] || "").length < 2 ? parseFloat(t).toFixed(2) : t);
   }
   var warmMult = function (n) { return multW(n, "warm") + multS(n, "warm"); };
+
+  /* ---------- the same multiplications on one gaming graphics card ---------- */
+  /* An estimate of the best case, checked on 16 November 2026. An Nvidia GeForce RTX 5090 is rated
+     at roughly 100 trillion single-precision operations a second and 575 watts. In a matrix product
+     every multiplication comes with one addition, so that is 50 trillion multiplications a second.
+     Real programs reach less than the rating, and memory is ignored: the attention grid of a long
+     context would not fit on the card. price: US dollars per kilowatt-hour of electricity. */
+  var GPU = { name: "Nvidia RTX 5090", rate: 5e13, watts: 575, price: 0.30 };
+  function duration(sec) {
+    var steps = [[31557600, "year"], [86400, "day"], [3600, "hour"], [60, "minute"], [1, "second"],
+                 [1e-3, "millisecond"], [1e-6, "microsecond"], [1e-9, "nanosecond"]];
+    for (var i = 0; i < steps.length; i++) {
+      if (sec >= steps[i][0] || i === steps.length - 1) {
+        var v = sec / steps[i][0], t = v >= 100 ? fmt.format(Math.round(v)) : String(parseFloat(v.toPrecision(2)));
+        return t + " " + steps[i][1] + (t === "1" ? "" : "s");
+      }
+    }
+  }
+  function gpuLine(label, mode) {
+    var mult = multW(total(), mode) + multS(total(), mode), sec = mult / GPU.rate;
+    var cost = sec * GPU.watts / 3.6e6 * GPU.price;
+    return "<span>" + label + ":</span> <b>" + duration(sec) + "</b> <span>and</span> <b>" +
+      (cost < 1e-6 ? "less than $0.000001" : money(cost)) + "</b> <span>of electricity</span>";
+  }
+  function renderGpu() {
+    var one = state.msg === 1 && state.out === 0, lines = [];
+    if (coldOn()) lines.push(gpuLine("All tokens, cold cache", "cold"));
+    if (warmOn()) lines.push(gpuLine((one ? "Newest token" : "New tokens") + ", warm cache", "warm"));
+    $("gpu").style.display = lines.length ? "" : "none";
+    $("gpu-lines").innerHTML = lines.join("<br>");
+    $("gpu-hint").textContent = "A best-case estimate for an " + GPU.name + ": " + fmt.format(GPU.rate / 1e12) +
+      " trillion multiplications a second, " + GPU.watts + " watts, $" + GPU.price.toFixed(2) + " per kilowatt-hour. " +
+      "It covers only the multiplications in the chart, for the heads and layers chosen in Settings, and ignores that a long context does not fit in the card's memory.";
+  }
 
   /* ---------- price lists: US dollars per million tokens, checked on 16 November 2026 ---------- */
   /* write: input written to the cache. read: input read from the cache. out: output.
@@ -1030,6 +1075,7 @@ tr:last-child td { border-bottom: 0; }
     $("leg-warm-text").textContent = (one ? "Newest token" : "New tokens") + ", warm cache";
     $("chart-title").textContent = state.out > 0 ? "Multiplications and bill" : "Multiplications and input bill";
     renderBills();
+    renderGpu();
 
     chartTo(total());
   }
