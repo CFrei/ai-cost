@@ -125,7 +125,7 @@
         var h = hOf(p[1]);
         if (h <= 0) return;
         y -= h;
-        el("rect", { "class": "seg " + p[0], x: x.toFixed(2), y: y.toFixed(2), width: BW, height: h.toFixed(2) }, svg);
+        el("rect", { "class": "seg " + p[0] + (r.by === "agent" ? " only-open" : ""), x: x.toFixed(2), y: y.toFixed(2), width: BW, height: h.toFixed(2) }, svg);
       });
       if (r.by === "you") el("circle", { "class": "fig-you", cx: xOf(r.t).toFixed(2), cy: BASE + 10, r: 3 }, svg);
     });
@@ -141,12 +141,13 @@
     }
     if (id === "agent") {
       var a = xOf(reqs[1].t) - BW / 2, b = xOf(1) + BW / 2, y0 = BASE + 10;
-      el("path", { "class": "fig-span", d: "M" + a + " " + (y0 - 4) + " v4 H" + b + " v-4" }, svg);
+      el("path", { "class": "fig-span only-open", d: "M" + a + " " + (y0 - 4) + " v4 H" + b + " v-4" }, svg);
       label(svg, L, "start", "your prompt");
-      label(svg, (a + b) / 2, "middle", "then " + (reqs.length - 1) + " requests the agent sends by itself");
-      label(svg, R, "end", "ten minutes later");
+      /* what the agent does by itself is part of the answer, so it is hidden until the bills are shown */
+      label(svg, (a + b) / 2, "middle", "then " + (reqs.length - 1) + " requests the agent sends by itself").classList.add("only-open");
+      label(svg, R, "end", "ten minutes later").classList.add("only-open");
     }
-    svg.setAttribute("aria-label", reqs.length === 1
+    svg.setAttribute("aria-label", id === "agent" ? "One prompt. What follows is drawn when the bills are shown." : reqs.length === 1
       ? "One request of " + A.tokens(A.round2(data[id].max)) + " tokens."
       : reqs.length + " requests. The text read for one request grows to " + A.tokens(A.round2(data[id].max)) + " tokens.");
   }
@@ -196,7 +197,10 @@
   document.querySelectorAll(".card").forEach(function (card) {
     var id = card.getAttribute("data-id"), d = data[id], n = d.reqs.length;
     draw(id, card.querySelector("svg"));
-    card.querySelector(".facts").innerHTML = n === 1
+    card.querySelector(".facts").innerHTML = id === "agent"
+      ? "<span class=\"only-shut\"><b>1</b> prompt of <b>200</b> tokens</span>" +
+        "<span class=\"only-open\"><b>" + n + "</b> requests, the last one of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens</span>"
+      : n === 1
       ? "<b>1</b> request of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens"
       : "<b>" + n + "</b> requests, the last one of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens";
     fillBill(id, card.querySelector(".bill"));
