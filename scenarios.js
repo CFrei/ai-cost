@@ -102,7 +102,7 @@
   function agent(o) {
     o = o || {};
     var steps = o.steps === undefined ? 40 : o.steps;
-    var base = 10000, prompt = 200, result = 3000, act = 250, fin = 600;
+    var base = o.base === undefined ? 10000 : o.base, prompt = 200, result = 3000, act = 250, fin = 600;
     var turns = [{ t: 0, by: "you", add: base + prompt, out: act, warm: false }];
     for (var i = 1; i <= steps; i++) {
       turns.push({ t: i / steps, by: "agent", add: result, out: i === steps ? fin : act, warm: true });

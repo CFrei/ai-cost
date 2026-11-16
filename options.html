@@ -49,10 +49,40 @@
         <p class="consider"><b>Consider</b>You have to know where to look. The model cannot notice what it was not given: a definition in the introduction, or a contradiction in another chapter.</p>
       </article>
       <article class="opt">
+        <h3>Send text as text</h3>
+        <p>Images are billed as tokens too, by their size in pixels and not by what they show. A page sent as a scan or a screenshot costs several times the tokens of the same page as text, and a PDF is usually read both ways at once.</p>
+        <div class="ex" data-ex="scan"></div>
+        <p class="consider"><b>Consider</b>The 2,500 tokens per scanned page are an example; the real number depends on the resolution and the model. Tables, formulas, figures and handwriting are often lost when a page is turned into text, and then the image is worth its price. Crop a screenshot to the part that matters.</p>
+      </article>
+      <article class="opt">
+        <h3>Trim what is loaded every time</h3>
+        <p>Before your first word, a tool sends its own instructions, the descriptions of every connected tool, and your project or memory files. All of that is carried in every request of the conversation.</p>
+        <div class="ex" data-ex="base"></div>
+        <p class="consider"><b>Consider</b>With a warm cache this text is billed at the read rate, so it costs less than it looks, but an agent sends it dozens of times. Disconnect tools and servers you are not using and keep standing instructions short. What you remove the model no longer knows: cut what is unused, not what it needs.</p>
+      </article>
+      <article class="opt">
         <h3>Start a new conversation when the subject changes</h3>
-        <p>Each message carries the whole conversation, including the parts that no longer matter. To go on with a long thread the next day, ask for a summary first and start a new conversation from it.</p>
+        <p>Each message carries the whole conversation, including the parts that no longer matter. A second subject in the same thread pays for the first one in every message.</p>
+        <div class="ex" data-ex="split"></div>
+        <p class="consider"><b>Consider</b>While the cache is warm the old part is cheap, so the saving is small, as here. It becomes large when the thread holds a document or a long agent run, or when you come back after a break.</p>
+      </article>
+      <article class="opt">
+        <h3>Compact a long conversation</h3>
+        <p>Compacting replaces the earlier turns with a summary the model writes, and the conversation goes on from there. Coding agents have a command for it and do it by themselves when the context is nearly full; on the API it can be switched on.</p>
+        <div class="ex" data-ex="compact"></div>
+        <p class="consider"><b>Consider</b>The summary costs a request, and it replaces the cached conversation, so the first message after it is new input. Details are lost: an agent may open the same files again. Compact at a natural break, when one part of the work is finished, not in the middle of a step.</p>
+      </article>
+      <article class="opt">
+        <h3>Hand over to a new session</h3>
+        <p>Instead of letting the model summarise everything, have it write a handover note and start a new session from that note: the goal, what is done, what was tried and ruled out, which files matter, the next step. Use it to continue on another day, when the cache has expired anyway.</p>
         <div class="ex" data-ex="fresh"></div>
-        <p class="consider"><b>Consider</b>A summary drops detail, and the model no longer knows what was already tried and ruled out, so put that in. Within one sitting the cache makes a long thread cheap to continue; do not restart in the middle of a task.</p>
+        <p class="consider"><b>Consider</b>The new session knows only what the note says. Read the note before you close the old session, and keep it in a file so that a later session can start from it too. Within one sitting, continuing is cheaper than handing over.</p>
+      </article>
+      <article class="opt">
+        <h3>Let a subagent do the searching</h3>
+        <p>An agent can hand part of a task to a subagent. The subagent reads the files in a context of its own and returns only its conclusion, so the main conversation does not carry everything that was read. It can also run on a smaller model.</p>
+        <div class="ex" data-ex="sub"></div>
+        <p class="consider"><b>Consider</b>A subagent starts cold: it loads its own instructions and knows nothing of the conversation except what it is told. On the same model the saving on one task is small; the gain is a main thread that stays short for the work that follows. For a small task it costs more than doing it directly, and several subagents at once multiply the bill.</p>
       </article>
     </div>
   </section>
@@ -64,7 +94,19 @@
         <h3>Finish in one sitting</h3>
         <p>Text the model has just read stays in a cache for a few minutes: five at Anthropic, counted from the last use. Sent again within that time, it costs a few percent of the full rate. After a break it is billed in full.</p>
         <div class="ex" data-ex="sitting"></div>
-        <p class="consider"><b>Consider</b>The cache matches a conversation from its start up to the first difference. Editing an earlier message, switching the model or changing the attached tools discards everything after that point. A chat app sets the cache lifetime for you; on the API a one-hour cache can be requested, at a higher price for filling it.</p>
+        <p class="consider"><b>Consider</b>The cache matches a conversation from its start up to the first difference. Editing an earlier message, switching the model or changing the attached tools discards everything after that point.</p>
+      </article>
+      <article class="opt">
+        <h3>Choose the cache lifetime by the length of your pauses</h3>
+        <p>On the API, and in some tools, the cache lifetime is a setting. Anthropic offers five minutes and one hour. Both are counted from the last use, and every use starts the time again at no charge. Filling the one-hour cache costs <span id="hour-ratio"></span> times as much as filling the five-minute one; reading costs the same.</p>
+        <div class="ex" data-ex="ttl"></div>
+        <p class="consider"><b>Consider</b>If your messages are less than five minutes apart, the one-hour cache only adds cost. It pays for pauses of five minutes to an hour, and only if you do come back: text that is written to it and never read again was just more expensive. A chat app makes this choice for you.</p>
+      </article>
+      <article class="opt">
+        <h3>Keep the cache warm with a ping</h3>
+        <p>A request that reads the cached conversation and asks for no output starts the cache's time again and is billed only at the read rate. Sent shortly before the cache would expire, it keeps a five-minute cache alive through a longer pause.</p>
+        <div class="ex" data-ex="ping"></div>
+        <p class="consider"><b>Consider</b>Every ping pays for the whole context at the read rate, so pings add up while nothing happens. At these prices <span id="ping-even"></span> pings cost as much as reading the thread cold once: stop pinging when you will be away longer than that. A ping has to be sent by a script or by the tool you use; a chat app does not offer it.</p>
       </article>
       <article class="opt">
         <h3>Use the smallest model that does the job</h3>
@@ -133,17 +175,78 @@
 <script>
 (function () {
   "use strict";
-  var A = window.AICost, M = A.MODELS;
+  var A = window.AICost, M = A.MODELS, S = M.sonnet;
+  /* Filling Anthropic's one-hour cache costs 2 times the plain input price and the five-minute cache
+     1.25 times. `write` in MODELS is the five-minute price, so the one-hour price is HOUR times it. */
+  var HOUR = 2 / 1.25;
+  /* a row can also be given as a ready bill instead of a list of requests */
+  function money(read, write, out) { return { read: read, write: write, out: out, total: read + write + out }; }
+  function plus(a, b) { return money(a.read + b.read, a.write + b.write, a.out + b.out); }
+  function twice(a) { return plus(a, a); }
   /* each example is a list of rows: [label, requests, model, batch] */
   var EX = {
     part: [
       ["One question about 200 pages", A.doc()],
       ["The same question about 20 pages", A.doc({ pages: 20 })]
     ],
+    scan: [
+      ["200 pages as scans, 2,500 tokens a page", A.requests([{ add: 200 * 2500 + 100, out: 400 }])],
+      ["The same 200 pages as text, " + A.PAGE + " tokens a page", A.doc()]
+    ],
+    base: [
+      ["The bug investigation with 40,000 tokens loaded at the start", A.agent({ base: 40000 })],
+      ["With 10,000 tokens loaded", A.agent()]
+    ],
+    sub: (function () {
+      /* 30 of the 40 steps are searching. Done by a subagent, they leave the main thread with
+         10 steps and one more result. Each agent loads its own 10,000 tokens at the start. */
+      var main = A.bill(A.agent({ steps: 11 }));
+      return [
+        ["The bug investigation in one thread of 40 steps", A.agent()],
+        ["30 of the steps in a subagent, same model", plus(main, A.bill(A.agent({ steps: 30 })))],
+        ["30 of the steps in a subagent on Haiku 5.5", plus(main, A.bill(A.agent({ steps: 30 }), "haiku"))]
+      ];
+    })(),
+    split: [
+      ["Two subjects in one thread of 50 messages", A.chat({ n: 50, warm: true, vary: 11 })],
+      ["The same 50 messages as two threads of 25", twice(A.bill(A.chat({ n: 25, warm: true, vary: 11 })))]
+    ],
+    compact: (function () {
+      /* an agent at 140,000 tokens takes 20 more steps; each brings back 3,000 tokens and writes 250.
+         Compacting first: one request that reads the thread and writes a summary of 2,000 tokens, then
+         the same 20 steps from 12,000 tokens (instructions and summary), which are new input once. */
+      var step = function (i) { return { add: 3000, out: 250, warm: true }; }, steps = [], k;
+      for (k = 0; k < 20; k++) steps.push(step(k));
+      var go = A.requests([{ add: 140000, out: 0 }].concat(steps)).slice(1);
+      var sum = A.requests([{ add: 140000, out: 0 }, { add: 100, out: 2000, warm: true }]).slice(1);
+      var after = A.requests([{ add: 12000 - 3000, out: 0, warm: true }].concat(steps.map(function (u, i) {
+        return { add: u.add, out: u.out, warm: i > 0 };
+      }))).slice(1);
+      return [
+        ["20 more agent steps in a thread of 140,000 tokens", go],
+        ["Compacted to 2,000 tokens first, then the 20 steps", plus(A.bill(sum), A.bill(after))]
+      ];
+    })(),
     fresh: [
       ["One more message in a thread of 140,000 tokens, a day later", A.chat({ n: 1, first: 140000 })],
-      ["The same message after a summary of 2,000 tokens", A.chat({ n: 1, first: 2000 })]
+      ["The same message in a new session, after a note of 2,000 tokens", A.chat({ n: 1, first: 2000 })]
     ],
+    ttl: (function () {
+      /* a thread of 140,000 tokens and five messages in it, 20 minutes apart; the answers are left out */
+      var n = 140000, w = n * S.write / 1e6, r = n * S.read / 1e6;
+      return [
+        ["Five messages 20 minutes apart in a thread of 140,000 tokens, five-minute cache", money(0, 5 * w, 0)],
+        ["The same with the one-hour cache", money(4 * r, w * HOUR, 0)]
+      ];
+    })(),
+    ping: (function () {
+      var n = 140000, w = n * S.write / 1e6, r = n * S.read / 1e6;
+      return [
+        ["Back after 20 minutes to a thread of 140,000 tokens, cache expired", money(0, w, 0)],
+        ["Kept warm with 4 pings", money(5 * r, 0, 0)],
+        ["Kept warm for 8 hours, 120 pings", money(121 * r, 0, 0)]
+      ];
+    })(),
     sitting: [
       ["Five questions about the 200 pages, one a day", A.chat({ n: 5, user: 100, answer: 400, first: 200 * A.PAGE, warm: false })],
       ["The same five within a few minutes", A.chat({ n: 5, user: 100, answer: 400, first: 200 * A.PAGE, warm: true })]
@@ -178,7 +281,7 @@
     return node;
   }
   document.querySelectorAll("[data-ex]").forEach(function (box) {
-    var rows = EX[box.getAttribute("data-ex")].map(function (r) { return { label: r[0], bill: A.bill(r[1], r[2], r[3]) }; });
+    var rows = EX[box.getAttribute("data-ex")].map(function (r) { return { label: r[0], bill: Array.isArray(r[1]) ? A.bill(r[1], r[2], r[3]) : r[1] }; });
     var top = Math.max.apply(null, rows.map(function (r) { return r.bill.total; }));
     box.setAttribute("role", "list");
     rows.forEach(function (r) {
@@ -207,6 +310,8 @@
   }
   document.getElementById("ratio-small").textContent = "Haiku 5.5 is " + times(M.haiku.write, M.sonnet.write) + "Sonnet 5.5";
   document.getElementById("ratio-big").textContent = "Fable 5.2 is " + times(M.fable.write, M.sonnet.write) + "Sonnet 5.5";
+  document.getElementById("hour-ratio").textContent = fmt(HOUR);
+  document.getElementById("ping-even").textContent = String(Math.round(S.write / S.read));
   document.getElementById("out-ratio").textContent = fmt(M.sonnet.out / M.sonnet.write);
 })();
 </script>
