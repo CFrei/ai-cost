@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why a longer context costs more</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: an airy white sheet. Left, one figure: token lanes run left to right
+   through Embedding, Query and the Attention dot grid; the fixed weights and
+   the Keys sit on top, so every cell is the row to its left times the column
+   above it. Right, the two counts and the growth chart. */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --ink: #1f2937;
+  --ink-2: #6b7280;
+  --ink-3: #9ca3af;
+  --rule: #e5e7eb;
+  --slot: #eef0f3;
+  --lane: #f4f6fb;
+  --emb: #9ca3af;
+  --q: #4a90e2;
+  --q-soft: #a9cbf5;
+  --k: #e2605f;
+  --k-soft: #f9aeae;
+  --att: #6d28d9;
+  --warm: #e2b100;
+  --m1: #f2a48f; --m2: #e8694f; --m3: #c23e29; --m4: #86261a;
+  --m5: #86d3b1; --m6: #3fb37f; --m7: #1e8c5e; --m8: #12603f;
+  --bw: #2e9e6b;
+  --br: #a9dcc3;
+  --mask: #dcdfe6;
+  --q-text: #2563eb;
+  --k-text: #dc2626;
+  --att-text: #6d28d9;
+  --font: "Lato", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #14161c;
+    --ink: #e8eaf0;
+    --ink-2: #a3a9b8;
+    --ink-3: #737a8c;
+    --rule: #2a2f3a;
+    --slot: #20242d;
+    --lane: #191c24;
+    --emb: #7b8394;
+    --q: #2f74c9;
+    --q-soft: #27518a;
+    --k: #c95252;
+    --k-soft: #8f4444;
+    --att: #a07be8;
+  --warm: #d9ad1c;
+  --m1: #f6c0b1; --m2: #ee8a74; --m3: #dc5f49; --m4: #b8432f;
+  --m5: #a9e2c8; --m6: #5fc797; --m7: #37a676; --m8: #23825a;
+  --bw: #3aa97a;
+  --br: #2b5f4a;
+    --mask: #333844;
+    --q-text: #7fb0ff;
+    --k-text: #f58c8c;
+    --att-text: #b9a2ff;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14161c;
+  --ink: #e8eaf0;
+  --ink-2: #a3a9b8;
+  --ink-3: #737a8c;
+  --rule: #2a2f3a;
+  --slot: #20242d;
+  --lane: #191c24;
+  --emb: #7b8394;
+  --q: #2f74c9;
+  --q-soft: #27518a;
+  --k: #c95252;
+  --k-soft: #8f4444;
+  --att: #a07be8;
+  --warm: #d9ad1c;
+  --m1: #f6c0b1; --m2: #ee8a74; --m3: #dc5f49; --m4: #b8432f;
+  --m5: #a9e2c8; --m6: #5fc797; --m7: #37a676; --m8: #23825a;
+  --bw: #3aa97a;
+  --br: #2b5f4a;
+  --mask: #333844;
+  --q-text: #7fb0ff;
+  --k-text: #f58c8c;
+  --att-text: #b9a2ff;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wrap {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 22px 28px 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+header { display: flex; flex-direction: column; gap: 4px; }
+h1 {
+  font-weight: 300;
+  font-size: clamp(26px, 2.8vw, 36px);
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; color: var(--ink-2); font-size: 16px; max-width: 80ch; }
+
+/* Controls */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.controls label { color: var(--ink-2); }
+.controls input[type="range"] {
+  flex: 1 1 200px;
+  max-width: 620px;
+  min-width: 150px;
+  accent-color: var(--att);
+  height: 24px;
+}
+.n-out { font-size: 22px; font-weight: 300; font-variant-numeric: tabular-nums; min-width: 9.6em; }
+.n-out b { font-weight: 700; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+button {
+  font: inherit;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--ink-3);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+button.primary { background: var(--att); border-color: var(--att); color: var(--bg); font-weight: 700; }
+button:hover:not(:disabled) { background: var(--slot); }
+button.primary:hover:not(:disabled) { background: var(--att); filter: brightness(1.12); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--q); outline-offset: 2px; }
+
+/* Main */
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: 32px;
+  align-items: start;
+}
+.stage-title, .side h2, .below h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--ink-2);
+}
+.stage { display: flex; flex-direction: column; gap: 6px; max-width: 700px; }
+.stage-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.seg { display: inline-flex; border: 1px solid var(--ink-3); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 13.5px; color: var(--ink-2); white-space: nowrap; }
+.seg button + button { border-left: 1px solid var(--ink-3); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:focus-visible { outline-offset: -3px; }
+.settings { position: relative; margin-left: auto; }
+.settings summary {
+  list-style: none; cursor: pointer; padding: 6px 14px; border: 1px solid var(--ink-3); border-radius: 6px; color: var(--ink);
+}
+.settings summary::-webkit-details-marker { display: none; }
+.settings summary:hover, .settings[open] summary { background: var(--slot); }
+.settings summary:focus-visible { outline: 3px solid var(--q); outline-offset: 2px; }
+.settings-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: min(300px, 86vw);
+  display: grid; grid-template-columns: 1fr 88px; gap: 10px 12px; align-items: center;
+  padding: 14px; background: var(--bg); border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.settings-panel input {
+  font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--ink-3); border-radius: 6px;
+  background: var(--bg); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.settings-row, .settings-panel .hint { grid-column: 1 / -1; }
+.settings-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.mult-note { color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.msg { display: flex; flex-direction: column; gap: 12px; padding-top: 18px; border-top: 1px solid var(--rule); }
+.msg-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; }
+.msg-head h2 { margin: 0; font-size: 18px; font-weight: 300; color: var(--ink-2); }
+.msg-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; flex: 1 1 360px; justify-content: flex-end; }
+.msg-ctl label { color: var(--ink-2); }
+.msg-ctl input { flex: 1 1 180px; max-width: 360px; accent-color: var(--att); height: 24px; }
+.msg-out { font-size: 18px; font-weight: 300; min-width: 7.6em; font-variant-numeric: tabular-nums; }
+.msg-out b { font-weight: 700; }
+.msg-body { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 36px; align-items: start; }
+.msg-pic { display: flex; flex-direction: column; gap: 8px; }
+.msg-pic .key { display: flex; flex-direction: column; gap: 4px; margin-top: 0; font-size: 13.5px; color: var(--ink-2); }
+.m-hist { fill: var(--att); }
+.warm .m-hist { fill-opacity: 0.22; }
+.m-new { fill: var(--att); }
+.m-split { stroke: var(--bg); stroke-width: 1.2; }
+.sw-hist { background: var(--att); opacity: 0.3; }
+.msg-nums { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th { font-weight: 400; color: var(--ink-2); font-size: 13.5px; }
+.table-wrap { overflow-x: auto; }
+table.warm .col-w, table.cold .col-c { background: var(--lane); font-weight: 700; color: var(--ink); }
+.msg .readout { min-height: 0; padding: 10px 0; border-top: 1px solid var(--rule); }
+@media (max-width: 700px) { .msg-body { grid-template-columns: minmax(0, 1fr); } .msg-pic { max-width: 300px; } }
+.mode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.mode-label { color: var(--ink-2); }
+.warm .xrow.on:not(.new), .warm .mx-q .c.on:not(.new), .warm .mx-k .c.on:not(.new), .warm .mx-a .c.on:not(.new) { opacity: 0.28; }
+.s-x { fill: var(--emb); }
+.s-wq { fill: var(--q); stroke: var(--bg); stroke-width: 0.8; }
+.s-wk { fill: var(--k); }
+.s-q { fill: var(--q-soft); }
+.s-k { fill: var(--k-soft); }
+.s-a { fill: var(--att); fill-opacity: 0.7; }
+.s-mask { fill: var(--mask); }
+.s-ring { fill: none; stroke: var(--ink-3); stroke-width: 0.8; }
+svg { display: block; width: 100%; height: auto; }
+
+.lane { fill: none; }
+.lane.on { fill: var(--lane); }
+.tok { fill: var(--ink-3); font-family: var(--font); font-size: 10.5px; opacity: 0; }
+.tok.on { fill: var(--ink); opacity: 1; }
+.tok.hl { font-weight: 700; }
+.c { fill: var(--slot); }
+.xrow rect { fill: var(--slot); }
+.xrow.on rect { fill: var(--emb); }
+.mx-wq .wcol rect { fill: var(--q); }
+.mx-wk .wcol rect { fill: var(--k); }
+.w-card { fill: var(--bg); stroke-width: 1.2; }
+.mx-wq .w-card { stroke: var(--q); }
+.mx-wk .w-card { stroke: var(--k); }
+.mx-q .c.on { fill: var(--q-soft); }
+.mx-k .c.on { fill: var(--k-soft); }
+.mx-a .c { fill: none; stroke: var(--slot); stroke-width: 1.2; }
+.mx-a .c.on { fill: var(--att); stroke: none; }
+.mx-a .c.on.masked { fill: var(--mask); }
+.focus .c.on, .focus .xrow.on, .focus .wcol { opacity: 0.22; }
+.focus .c.hl, .focus .xrow.hl, .focus .wcol.hl { opacity: 1; }
+.mx-q .c.res, .mx-k .c.res, .mx-a .c.res { stroke: var(--ink); stroke-width: 1.6; }
+.w-frame { fill: none; stroke-width: 1.2; }
+.w-frame.q { stroke: var(--q); }
+.w-frame.k { stroke: var(--k); }
+.turn { fill: none; stroke: var(--k); stroke-width: 1.4; }
+.turn-head { fill: var(--k); }
+.fig-note { fill: var(--ink-2); font-family: var(--font); font-size: 10.5px; }
+.fig-note.strong { fill: var(--ink); }
+.band { fill: var(--lane); }
+.cross { fill: var(--bg); stroke: var(--ink); stroke-width: 1.4; }
+.anno { fill: var(--ink-2); font-family: var(--font); font-size: 11.5px; }
+.m-name { font-family: var(--font); font-size: 12.5px; }
+.m-shape { fill: var(--ink-2); font-family: var(--font); font-size: 10.5px; }
+.m-shape .n { fill: var(--ink); font-weight: 700; }
+.name-emb { fill: var(--ink-2); }
+.name-q { fill: var(--q-text); }
+.name-k { fill: var(--k-text); }
+.name-a { fill: var(--att-text); }
+.hint { margin: 0; font-size: 13px; color: var(--ink-3); max-width: 70ch; }
+
+/* Side */
+.side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.tile { display: flex; flex-direction: column; }
+.tile-label { font-size: 15px; color: var(--ink-2); }
+.tile-label.q { color: var(--q-text); }
+.tile-label.a { color: var(--att-text); }
+.tile-value {
+  font-weight: 300;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.tile-sub { color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.tile-sub b { color: var(--ink); }
+.readout {
+  margin: 0;
+  color: var(--ink-2);
+  min-height: 3em;
+}
+.readout b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; margin-bottom: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--ink-2); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.sw-q { background: var(--q); }
+.sw-a { background: var(--att); }
+.chart-box { position: relative; }
+.chart-box svg { cursor: crosshair; touch-action: none; }
+.grid line { stroke: var(--rule); stroke-width: 1; }
+.axis text { fill: var(--ink-2); font-family: var(--font); font-size: 11.5px; }
+.axis .title { fill: var(--ink-3); }
+.dlabel { fill: var(--ink); font-family: var(--font); font-size: 11.5px; font-weight: 700; }
+.line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.line.q { stroke: var(--q); }
+.line.a { stroke: var(--att); }
+.guide { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.area.a { fill: var(--att); fill-opacity: 0.72; }
+.area.q { fill: var(--q); fill-opacity: 0.78; }
+.area.w { fill: var(--warm); fill-opacity: 0.6; stroke: var(--warm); stroke-width: 1; }
+.sw-w { background: var(--warm); }
+.bill-halo { fill: none; stroke: var(--bg); stroke-width: 4.5; stroke-linejoin: round; }
+.bill-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.bill-dot { stroke: var(--bg); stroke-width: 1.5; }
+.sw-ln { width: 16px; height: 0; border-radius: 0; background: none; border-top: 3px solid; vertical-align: middle; }
+.models { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.model-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.model-row .mode-label { min-width: 74px; font-size: 13.5px; }
+.model-btn { padding: 3px 10px; font-size: 13.5px; color: var(--ink-2); border-color: var(--rule); }
+.model-btn[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); background: var(--lane); }
+.model-btn[aria-pressed="false"] .sw-ln { opacity: 0.45; }
+.bill-list { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bill-list b { color: var(--ink); }
+.warm-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.dot.wd { fill: var(--bg); stroke: var(--ink); stroke-width: 2; }
+.sw-line { width: 14px; height: 0; border-radius: 0; border-top: 2px solid var(--ink); vertical-align: middle; }
+.area.bw { fill: var(--bw); fill-opacity: 0.9; }
+.area.br { fill: var(--br); }
+.sw-bw { background: var(--bw); }
+.sw-br { background: var(--br); }
+.bill-total { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.edge { fill: none; stroke: var(--bg); stroke-width: 1.5; }
+.mark { stroke: var(--ink); stroke-width: 1.2; }
+.dot.t { fill: var(--ink); }
+.axis-title { fill: var(--ink-3); font-family: var(--font); font-size: 11.5px; }
+.dot { stroke: var(--bg); stroke-width: 2; }
+.dot.q { fill: var(--q); }
+.dot.a { fill: var(--att); }
+.hover-line { stroke: var(--ink); stroke-width: 1; }
+.hover-dot { fill: var(--bg); stroke-width: 2; }
+.hover-dot.q { stroke: var(--q); }
+.hover-dot.a { stroke: var(--att); }
+.tip {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tip[hidden] { display: none; }
+.tip strong { display: block; }
+.tip .swatch { width: 8px; height: 8px; }
+
+/* Below */
+.below {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 36px;
+  align-items: start;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+.below h2 { margin-bottom: 8px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: right; padding: 6px 0 6px 16px; border-bottom: 1px solid var(--rule); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th { font-weight: 400; color: var(--ink-2); font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+.fine { margin: 8px 0 0; color: var(--ink-2); font-size: 13.5px; max-width: 65ch; }
+.notes { margin: 0; padding-left: 18px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; max-width: 65ch; }
+
+@media (max-width: 760px) {
+  main, .below { grid-template-columns: minmax(0, 1fr); }
+  .buttons { margin-left: 0; }
+}
+@media (max-width: 420px) {
+  .wrap { padding: 16px 16px 32px; }
+  .tiles { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Why does a longer context cost more?</h1>
+    <p class="lede">The weights never change size. Every token adds one row to the input, so the matrix products inside each block get larger. Sizes are GPT-2's: 768 numbers per token and 64 per attention head. Slide the context from 1 token to a million.</p>
+  </header>
+
+  <section class="controls" aria-label="Controls">
+    <label for="ctx-length">Context length</label>
+    <input type="range" id="ctx-length" min="0" max="44" step="1" value="5">
+    <output class="n-out" id="ctx-out" for="ctx-length"><b>6</b> tokens</output>
+    <details class="settings" id="settings">
+      <summary>Settings</summary>
+      <div class="settings-panel">
+        <label for="set-heads">Heads per layer</label>
+        <input type="number" id="set-heads" min="1" max="256" step="1" value="1">
+        <label for="set-layers">Layers</label>
+        <input type="number" id="set-layers" min="1" max="256" step="1" value="1">
+        <div class="settings-row">
+          <button type="button" id="set-gpt2">GPT-2: 12 × 12</button>
+          <button type="button" id="set-one">One head</button>
+        </div>
+        <p class="hint">Every head in every layer repeats both products with its own weights. The counts and the chart are multiplied; the figure still shows one head.</p>
+      </div>
+    </details>
+  </section>
+
+  <main>
+    <section class="stage" aria-label="The matrix products inside one attention head">
+      <div class="stage-head">
+        <h2 class="stage-title">Inside one attention head</h2>
+        <div class="seg" role="group" aria-label="View">
+          <button type="button" id="view-cells" aria-pressed="true">Close-up</button>
+          <button type="button" id="view-scale" aria-pressed="false">To scale</button>
+        </div>
+      </div>
+      <svg id="fig" viewBox="0 0 604 472" role="img" aria-label="The embedding times the fixed weights W Q gives the queries, and times W K gives the keys; every query times every key gives the attention grid. The weights keep their size while the other blocks grow with the context."></svg>
+      
+    </section>
+
+    <div class="side">
+      <div class="mode">
+        <span class="mode-label" id="mode-label">Count</span>
+        <div class="seg" role="group" aria-labelledby="mode-label">
+          <button type="button" id="mode-cold" aria-pressed="true">All tokens · cold cache</button>
+          <button type="button" id="mode-warm" aria-pressed="false">Newest token · warm cache</button>
+        </div>
+        <span class="mult-note" id="mult-note">Counting 1 head × 1 layer</span>
+      </div>
+      <div class="tiles">
+        <div class="tile" id="tile1">
+          <span class="tile-label" id="t-total">Multiplications for the whole context</span>
+          <span class="tile-value" id="c-total"></span>
+        </div>
+        <div class="tile" id="tile2" style="display:none">
+          <span class="tile-label">Newest token, warm cache</span>
+          <span class="tile-value" id="c-total2"></span>
+        </div>
+      </div>
+
+      
+
+      <section aria-label="Growth chart">
+        <div class="chart-head">
+          <h2 id="chart-title">Multiplications for the whole context</h2>
+          <div class="legend">
+            <span><span class="swatch sw-a"></span>Attention scores</span>
+            <span><span class="swatch sw-q"></span>Making queries and keys</span>
+            <span id="leg-warm" style="display:none"><span class="swatch sw-w"></span>Newest token, warm cache</span>
+          </div>
+        </div>
+        <div class="chart-box">
+          <svg id="svg-chart" viewBox="0 0 640 300" role="img" aria-label="Chart with two vertical axes against context length. Areas on the left axis: multiplications for queries and keys and for attention scores. Lines on the right axis: the input bill of the chosen models."></svg>
+          <div class="tip" id="tip" hidden></div>
+        </div>
+        <div class="models" id="model-buttons" aria-label="Models whose input bill is drawn"></div>
+        <p class="bill-list" id="bill-list"></p>
+        <p class="hint" id="chart-hint"></p>
+        <p class="hint">List prices per million input tokens on 16 November 2026, cache write and cache read: Haiku 5.5 $0.125 and $0.01 (five times that for prompts over 100,000 tokens), Sonnet 5.5 $2.50 and $0.10, Opus 5.5 $5 and $0.20, Fable 5.2 $10 and $0.20; GPT-6 Luna $0.125 and $0.01, GPT-6.1 Terra $1.25 and $0.05, GPT-6.1 Sol $2.50 and $0.10, GPT-6 Astra $12.50 and $1 (OpenAI doubles these for prompts over 272,000 tokens). Solid lines are the cold cache, dashed lines the warm cache.</p>
+      </section>
+
+    </div>
+  </main>
+
+  <section class="msg" aria-label="What a new message costs">
+    <div class="msg-head">
+      <h2>What a new message costs</h2>
+      <div class="msg-ctl">
+        <label for="msg-length">Message length</label>
+        <input type="range" id="msg-length" min="0" max="13" step="1" value="4">
+        <output class="msg-out" id="msg-out" for="msg-length"><b>100</b> tokens</output>
+      </div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-pic">
+        <svg id="msg-fig" viewBox="0 0 236 236" role="img" aria-label="The attention grid for the earlier context plus the new message. The new message is a strip along the bottom."></svg>
+        <div class="key">
+          <span><span class="swatch sw-hist"></span><span id="msg-key-hist"></span></span>
+          <span><span class="swatch sw-a"></span><span id="msg-key-new"></span></span>
+        </div>
+      </div>
+      <div class="msg-nums">
+        <div class="table-wrap">
+          <table id="msg-table">
+            <thead>
+              <tr><th scope="col">For this message</th><th scope="col" class="col-w">Warm cache</th><th scope="col" class="col-c">Cold cache</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Total multiplications</td><td class="col-w" id="mw-t"></td><td class="col-c" id="mc-t"></td></tr>
+              <tr><td>Input bill</td><td class="col-w" id="mw-b"></td><td class="col-c" id="mc-b"></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="readout" id="msg-sum"></p>
+        <p class="hint">The earlier context is the length set at the top; the message is added after it. The switch above picks which column the picture shows. Multiplications follow the heads and layers in Settings. The bill uses Claude Sonnet 5.5 list prices from 15 November 2026: $0.10 per million tokens read from the cache and $2.50 per million written to it. The reply is not included.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+  /* Sizes are GPT-2's: DM numbers per token, DH per head. The close-up draws 1 of every 16. */
+  var MAX = 12, DM = 768, DH = 64, CM = 48, CH = 4, START = 6;
+  var STOPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768,
+               1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576, 32768, 49152, 65536, 98304,
+               131072, 196608, 262144, 393216, 524288, 786432, 1048576];
+  var NMAX = STOPS[STOPS.length - 1];
+  var P = 16, M = 4;                       /* close-up pitch per token / head cell, and per embedding bar */
+  var WORDS = ["The", "cat", "sat", "on", "the", "mat", "because", "it", "was", "tired", "and", "warm"];
+  /* geometry of the figure, in viewBox units */
+  var XX = 58, QX = 262, WKX = QX + 12, AX = 366, WYQ = 40, WYK = 30, ROWY = 244, KTY = ROWY - 12 - CH * P, SIDE = 192;
+  var NS = "http://www.w3.org/2000/svg";
+  var fmt = new Intl.NumberFormat("en-US");
+  var big = new Intl.NumberFormat("en-US", { notation: "compact", compactDisplay: "long", maximumSignificantDigits: 3 });
+  var show = function (v) { return v < 1e6 ? fmt.format(v) : big.format(v); };
+  var $ = function (id) { return document.getElementById(id); };
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var costW = function (n) { return 2 * n * DM * DH; };
+  var costS = function (n) { return n * n * DH; };
+  var EQUAL = 2 * DM;                      /* context length where both cost the same */
+  function el(name, attrs, parent) {
+    var node = document.createElementNS(NS, name);
+    for (var k in attrs) node.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  function tokens(n) { return fmt.format(n) + (n === 1 ? " token" : " tokens"); }
+  function word(i) { return "“" + WORDS[i] + "”"; }
+  function nearestStop(n) {
+    var best = 0, d = Infinity;
+    for (var i = 0; i < STOPS.length; i++) {
+      var di = Math.abs(Math.log(STOPS[i]) - Math.log(n));
+      if (di < d) { d = di; best = i; }
+    }
+    return best;
+  }
+  function nextStop(n) { for (var i = 0; i < STOPS.length; i++) if (STOPS[i] > n) return STOPS[i]; return null; }
+  function prevStop(n) { for (var i = STOPS.length - 1; i >= 0; i--) if (STOPS[i] < n) return STOPS[i]; return null; }
+
+  var state = { n: START, pref: "cells", mode: "cold", shown: "cold", heads: 1, layers: 1, lastView: null, anim: null, run: 0,
+                hoverQ: null, hoverK: null, hoverA: null };
+  /* cold cache: the whole context is computed. warm cache: only the newest token's share. */
+  /* every head in every layer repeats both products, so the settings multiply the counts */
+  var multW = function (n, mode) { return state.heads * state.layers * (mode === "warm" ? 2 * DM * DH : costW(n)); };
+  var multS = function (n, mode) { return state.heads * state.layers * (mode === "warm" ? n * DH : costS(n)); };
+  /* "both" draws the cold case as the areas and the warm case as a line on the same axes */
+  /* drawn mode: with both cases off, the last one shown is still drawn while it sinks to zero */
+  var drawn = function () { return state.mode === "none" ? state.shown : state.mode; };
+  var prim = function () { return drawn() === "warm" ? "warm" : "cold"; };
+  var coldOn = function () { return state.mode === "cold" || state.mode === "both"; };
+  var warmOn = function () { return state.mode === "warm" || state.mode === "both"; };
+  var fW = function (n) { return multW(n, prim()); };
+  var fS = function (n) { return multS(n, prim()); };
+  function view() { return state.n > MAX ? "scale" : state.pref; }
+
+  /* illustrative attention weights: one shade per pair a token may see */
+  var seed = 20261115;
+  function rnd() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+  var shade = [];
+  for (var wi = 0; wi < MAX; wi++) {
+    var raw = [], top = 0;
+    for (var wj = 0; wj <= wi; wj++) { var v = Math.exp(rnd() * 3.2); raw.push(v); if (v > top) top = v; }
+    shade.push(raw.map(function (x) { return 0.16 + 0.84 * x / top; }));
+  }
+
+  var svg = $("fig");
+  var fig = el("g", {}, svg);              /* close-up: every cell drawn */
+  var sc = el("g", {}, svg);               /* to scale: blocks */
+
+  /* ================= close-up ================= */
+  var lanes = [], rowLab = [], colLab = [];
+  var r, c;
+  for (r = 0; r < MAX; r++) {
+    lanes.push(el("rect", { "class": "lane", x: XX - 3, y: ROWY + r * P, width: AX + MAX * P - XX + 6, height: P }, fig));
+  }
+  for (r = 0; r < MAX; r++) {
+    var t = el("text", { "class": "tok", x: XX - 7, y: ROWY + r * P + 11.5, "text-anchor": "end" }, fig);
+    t.textContent = WORDS[r]; rowLab.push(t);
+    var cxm = AX + r * P + 9, cym = KTY - 5;
+    var u = el("text", { "class": "tok", x: cxm, y: cym, transform: "rotate(-52 " + cxm + " " + cym + ")" }, fig);
+    u.textContent = WORDS[r]; colLab.push(u);
+  }
+  var gX = el("g", { "class": "mx-x" }, fig), xrows = [];
+  for (r = 0; r < MAX; r++) {
+    var gr = el("g", { "class": "xrow" }, gX);
+    for (c = 0; c < CM; c++) el("rect", { x: XX + c * M + 0.5, y: ROWY + r * P + 1, width: M - 1, height: P - 2, rx: 1 }, gr);
+    xrows.push(gr);
+  }
+  /* each weight matrix is a card; W_K sits behind W_Q, shifted up and to the right */
+  var gW = el("g", {}, fig);
+  function weights(x0, y0, cls) {
+    var g = el("g", { "class": cls }, gW), cols = [];
+    el("rect", { "class": "w-card", x: x0 - 3.5, y: y0 - 3.5, width: CH * P + 7, height: CM * M + 7, rx: 5 }, g);
+    for (var cc = 0; cc < CH; cc++) {
+      var gc = el("g", { "class": "wcol" }, g);
+      for (var kk = 0; kk < CM; kk++) el("rect", { x: x0 + cc * P + 1, y: y0 + kk * M + 0.5, width: P - 2, height: M - 1, rx: 1 }, gc);
+      cols.push(gc);
+    }
+    cols.g = g;
+    return cols;
+  }
+  var WK = weights(WKX, WYK, "mx-wk"), WQ = weights(QX, WYQ, "mx-wq");
+
+  function matrix(x0, y0, rows, cols, cls, tag) {
+    var g = el("g", { "class": cls }, fig), cells = [];
+    for (var rr = 0; rr < rows; rr++) {
+      cells.push([]);
+      for (var cc = 0; cc < cols; cc++) {
+        var a = { "class": "c", x: x0 + cc * P + 1, y: y0 + rr * P + 1, width: P - 2, height: P - 2, rx: 2.5 };
+        if (tag) { a["data-m"] = tag; a["data-r"] = rr; a["data-c"] = cc; }
+        cells[rr].push(el("rect", a, g));
+      }
+    }
+    cells.g = g;
+    return cells;
+  }
+  var Q = matrix(QX, ROWY, MAX, CH, "mx-q", "q");
+  var KT = matrix(AX, KTY, CH, MAX, "mx-k", "k");
+  var A = []; A.g = el("g", { "class": "mx-a" }, fig);
+  for (r = 0; r < MAX; r++) {
+    A.push([]);
+    for (c = 0; c < MAX; c++) {
+      A[r].push(el("circle", { "class": "c", cx: AX + c * P + 8, cy: ROWY + r * P + 8, r: 6.3,
+                               "data-m": "a", "data-r": r, "data-c": c }, A.g));
+    }
+  }
+  /* W_K produces the keys */
+  var ay = KTY + CH * P / 2, ax0 = WKX + CH * P + 6, ax1 = AX - 5;
+  el("path", { "class": "turn", d: "M" + ax0 + " " + ay + " L" + (ax1 - 5) + " " + ay }, fig);
+  el("path", { "class": "turn-head", d: "M" + ax1 + " " + ay + " l-6 -3.5 v7 z" }, fig);
+
+  /* a two-line label: coloured name (with optional subscripts) above a shape line */
+  function label(parent, cls, parts) {
+    var t1 = el("text", { "class": "m-name " + cls }, parent), down = false;
+    parts.forEach(function (p) {
+      if (p.charAt(0) === "_") {
+        el("tspan", { dy: 3, "font-size": 8.5 }, t1).textContent = p.slice(1); down = true;
+      } else {
+        var ts = el("tspan", down ? { dy: -3 } : {}, t1); ts.textContent = p; down = false;
+      }
+    });
+    return { name: t1, shape: el("text", { "class": "m-shape" }, parent) };
+  }
+  function place(lb, x, y, anchor) {
+    lb.name.setAttribute("x", x); lb.name.setAttribute("y", y); lb.name.setAttribute("text-anchor", anchor);
+    lb.shape.setAttribute("x", x); lb.shape.setAttribute("y", y + 13); lb.shape.setAttribute("text-anchor", anchor);
+  }
+  function shape(lb, parts) {
+    var node = lb.shape;
+    while (node.firstChild) node.removeChild(node.firstChild);
+    parts.forEach(function (p) {
+      var ts = el("tspan", typeof p === "number" ? { "class": "n" } : {}, node);
+      ts.textContent = typeof p === "number" ? fmt.format(p) : p;
+    });
+  }
+  var BOT = ROWY + MAX * P + 16;
+  var cX = label(fig, "name-emb", ["Embedding"]), cQ = label(fig, "name-q", ["Query"]);
+  var cA = label(fig, "name-a", ["Attention"]), cK = label(fig, "name-k", ["Key"]);
+  var cWQ = label(fig, "name-q", ["W", "_Q"]), cWK = label(fig, "name-k", ["W", "_K"]);
+  place(cX, XX + CM * M / 2, BOT, "middle"); place(cQ, QX + 32, BOT, "middle");
+  place(cA, AX + MAX * P / 2, BOT, "middle"); place(cK, AX + MAX * P + 8, KTY + 30, "start");
+  place(cWQ, QX - 12, WYQ + 9, "end"); place(cWK, WKX + 32, 9, "middle");
+  shape(cWQ, ["768 × 64"]); shape(cWK, ["768 × 64"]);
+  [["Both weight matrices keep this", "fig-note strong"], ["size at every context length:", "fig-note strong"],
+   ["768 rows, one per number in a", "fig-note"], ["token's embedding, and 64", "fig-note"],
+   ["columns, one per number in", "fig-note"], ["its query or key.", "fig-note"]].forEach(function (ln, i) {
+    el("text", { "class": ln[1], x: QX - 12, y: WYQ + 78 + i * 14, "text-anchor": "end" }, fig).textContent = ln[0];
+  });
+
+  /* ================= to scale ================= */
+  function block(cls) { return el("rect", { "class": cls, rx: 0.8 }, sc); }
+  var sX = block("s-x"), sWK = block("s-wk"), sWQ = block("s-wq"), sQ = block("s-q"), sK = block("s-k"), sA = block("s-a");
+  var sMask = el("polygon", { "class": "s-mask" }, sc);
+  var lX = label(sc, "name-emb", ["Embedding"]), lQ = label(sc, "name-q", ["Query"]);
+  var lA = label(sc, "name-a", ["Attention"]), lK = label(sc, "name-k", ["Key"]);
+  var lW = label(sc, "name-q", ["W", "_Q", ", W", "_K"]);
+  shape(lW, ["768 × 64 each"]);
+  var sNote = [0, 1, 2].map(function (i) {
+    return el("text", { "class": i === 0 ? "fig-note strong" : "fig-note", x: 4, y: 48 + i * 14 }, sc);
+  });
+  function setRect(node, x, y, w, h) {
+    node.setAttribute("x", x.toFixed(2)); node.setAttribute("y", y.toFixed(2));
+    node.setAttribute("width", w.toFixed(2)); node.setAttribute("height", h.toFixed(2));
+  }
+  /* one unit of length is one number or one token; the longest side fills the picture */
+  function drawScale(nn) {
+    var p = SIDE / Math.max(nn, DM);
+    var vis = function (v) { return Math.max(v, 1.6); };
+    var tok = vis(nn * p), mod = vis(DM * p), head = vis(DH * p);
+    var wy = ROWY - 12 - mod, off = Math.max(2.4, Math.min(8, head * 0.5));
+    setRect(sX, QX - 12 - mod, ROWY, mod, tok);
+    setRect(sQ, QX, ROWY, head, tok);
+    setRect(sWK, QX + off, wy - off, head, mod);
+    setRect(sWQ, QX, wy, head, mod);
+    setRect(sK, AX, ROWY - 12 - head, tok, head);
+    setRect(sA, AX, ROWY, tok, tok);
+    sMask.setAttribute("points", tok >= 4
+      ? AX + "," + ROWY + " " + (AX + tok).toFixed(2) + "," + ROWY + " " + (AX + tok).toFixed(2) + "," + (ROWY + tok).toFixed(2)
+      : "");
+    place(lX, QX - 12, ROWY + tok + 15, "end");
+    place(lQ, QX, ROWY + tok + 15, "start");
+    place(lA, AX, ROWY + tok + 15, "start");
+    place(lK, AX, ROWY - 12 - head - 19, "start");
+    place(lW, QX - 9, Math.min(wy + mod / 2, ROWY - 38), "end");
+  }
+  var disp = { n: START, target: START, raf: 0 };
+  function tweenTo(n) {
+    cancelAnimationFrame(disp.raf);
+    disp.target = n;
+    if (reduced) { disp.n = n; drawScale(n); return; }
+    var from = Math.log(disp.n), to = Math.log(n), t0 = null;
+    function step(now) {
+      if (t0 === null) t0 = now;
+      var f = Math.min(1, (now - t0) / 340);
+      var e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+      disp.n = Math.exp(from + (to - from) * e);
+      drawScale(disp.n);
+      if (f < 1) disp.raf = requestAnimationFrame(step);
+    }
+    disp.raf = requestAnimationFrame(step);
+  }
+
+  function money(v) {
+    if (v === 0) return "$0";
+    if (v >= 100) return "$" + fmt.format(Math.round(v));
+    if (v >= 1) return "$" + v.toFixed(2);
+    var t = String(parseFloat(v.toPrecision(2)));
+    if (t.indexOf("e") >= 0) t = v.toFixed(9).replace(/0+$/, "");
+    return "$" + ((t.split(".")[1] || "").length < 2 ? parseFloat(t).toFixed(2) : t);
+  }
+  var warmMult = function (n) { return multW(n, "warm") + multS(n, "warm"); };
+
+  /* ---------- price lists: US dollars per million tokens, checked on 16 November 2026 ---------- */
+  /* write: input written to the cache. read: input read from the cache.
+     tier: above this many input tokens the whole request is billed at `mult` times these rates. */
+  var MODELS = [
+    { id: "haiku", name: "Haiku 5.5", maker: "Anthropic", write: 0.125, read: 0.01, tier: 100000, mult: 5 },
+    { id: "sonnet", name: "Sonnet 5.5", maker: "Anthropic", write: 2.5, read: 0.10 },
+    { id: "opus", name: "Opus 5.5", maker: "Anthropic", write: 5, read: 0.20 },
+    { id: "fable", name: "Fable 5.2", maker: "Anthropic", write: 10, read: 0.20 },
+    { id: "luna", name: "GPT-6 Luna", maker: "OpenAI", write: 0.125, read: 0.01, tier: 272000, mult: 2 },
+    { id: "terra", name: "GPT-6.1 Terra", maker: "OpenAI", write: 1.25, read: 0.05, tier: 272000, mult: 2 },
+    { id: "sol", name: "GPT-6.1 Sol", maker: "OpenAI", write: 2.5, read: 0.10, tier: 272000, mult: 2 },
+    { id: "astra", name: "GPT-6 Astra", maker: "OpenAI", write: 12.5, read: 1, tier: 272000, mult: 2 }
+  ];
+  MODELS.forEach(function (m, i) { m.color = "var(--m" + (i + 1) + ")"; m.on = m.id === "sonnet"; });
+  function tierMult(m, n) { return m.tier && n > m.tier ? m.mult : 1; }
+  /* cold: every token is new input, written to the cache. warm: earlier tokens are read from it. */
+  function billCold(m, n) { return n * m.write * tierMult(m, n) / 1e6; }
+  function billWarm(m, n) { return (Math.max(n - 1, 0) * m.read + Math.min(n, 1) * m.write) * tierMult(m, n) / 1e6; }
+
+  /* ---------- chart: stacked, linear axes, zooms out with the context ---------- */
+  var C = { w: 640, h: 300, l: 78, r: 70, t: 30, b: 42 };
+  var LEVELS = [12, 48, 192, 768, 3072, 12288, 49152, 196608, NMAX];
+  function levelFor(n) { for (var i = 0; i < LEVELS.length; i++) if (LEVELS[i] >= n) return LEVELS[i]; return NMAX; }
+  var chart = $("svg-chart");
+  /* while an axis eases to a smaller range, marks that overshoot are cut at the plot edge */
+  var clipDef = el("clipPath", { id: "plot-clip" }, el("defs", {}, chart));
+  el("rect", { x: C.l - 6, y: C.t - 6, width: C.w - C.l - C.r + 12, height: C.h - C.b - C.t + 12 }, clipDef);
+  var gGrid = el("g", { "class": "grid" }, chart);
+  var areaA = el("path", { "class": "area a" }, chart);
+  var areaQ = el("path", { "class": "area q" }, chart);
+  var edge = el("path", { "class": "edge" }, chart);
+  var areaWarm = el("path", { "class": "area w" }, chart);
+  var gAxis = el("g", { "class": "axis" }, chart);
+  var gAxisR = el("g", { "class": "axis" }, chart);
+  var gBill = el("g", {}, chart);
+  el("text", { "class": "axis-title", x: 2, y: 14 }, chart).textContent = "multiplications";
+  var capR = el("text", { "class": "axis-title", x: C.w - 2, y: 14, "text-anchor": "end" }, chart);
+  capR.textContent = "input bill";
+  [areaA, areaQ, edge, areaWarm, gBill].forEach(function (e) { e.setAttribute("clip-path", "url(#plot-clip)"); });
+  el("text", { "class": "axis-title", x: (C.l + C.w - C.r) / 2, y: C.h - 6, "text-anchor": "middle" }, chart).textContent = "Context length (tokens)";
+  var mark = el("line", { "class": "mark" }, chart);
+  var dotQ = el("circle", { "class": "dot t", r: 4.5 }, chart);
+  var dotA = el("circle", { "class": "dot t", r: 4.5 }, chart);
+  var warmDot = el("circle", { "class": "dot wd", r: 4.5 }, chart);
+  var hoverLine = el("line", { "class": "hover-line", visibility: "hidden" }, chart);
+  var tip = $("tip");
+  /* displayed scales: xm for the horizontal axis, yl and yr for the two vertical ones.
+     kl and kr hold the vertical axes at their previous scale while they ease to a new one. */
+  /* rise: 0 with both cases off, 1 when a case is shown; the marks grow and sink with it */
+  var cur = { xm: levelFor(START), target: levelFor(START), yl: 0, yr: 0, kl: 1, kr: 1, rise: 1, riseTarget: 1 };
+  var gone = function () { return state.mode === "none" && cur.rise <= 0.001; };
+  var yShown = function (xm) { return fW(xm) + fS(xm); };
+  /* with nothing shown the left axis runs from 0 to 1 */
+  var yLeft = function (xm) { return state.mode === "none" ? 1 : yShown(xm); };
+  var yRight = function (xm) {
+    var bm = 0, cold = drawn() !== "warm";
+    if (!gone()) MODELS.forEach(function (m) { if (m.on) bm = Math.max(bm, cold ? billCold(m, xm) : billWarm(m, xm)); });
+    return bm;
+  };
+  var sx = function (n) { return C.l + n / cur.xm * (C.w - C.l - C.r); };
+  var sy = function (v) { return C.h - C.b - v / cur.yl * (C.h - C.t - C.b); };
+  function niceStep(max, count) {
+    var rawStep = max / count, mag = Math.pow(10, Math.floor(Math.log10(rawStep))), f = rawStep / mag;
+    return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * mag;
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  function drawChart() {
+    var xm = cur.xm, ym = yLeft(xm) * cur.kl, i, n, v;
+    cur.yl = ym;
+    var base = sy(0), N = 64, lower = "", upper = "", none = gone();
+    var H = C.h - C.t - C.b, ref = yShown(xm), moving = state.mode === "none" || ease.r;
+    /* marks: on the axis scale normally; while rising or sinking, at a share of their final height */
+    var ya = moving ? function (q) { return base - q / ref * H * cur.rise; } : sy;
+    for (i = 0; i <= N; i++) {
+      n = xm * i / N;
+      lower += (i ? "L" : "M") + sx(n).toFixed(1) + " " + ya(fW(n)).toFixed(1);
+      upper += "L" + sx(xm - n).toFixed(1) + " " + ya(fW(xm - n) + fS(xm - n)).toFixed(1);
+    }
+    areaQ.setAttribute("d", none ? "" : lower + "L" + sx(xm).toFixed(1) + " " + base + "L" + sx(0).toFixed(1) + " " + base + "Z");
+    areaA.setAttribute("d", none ? "" : lower + upper + "Z");
+    edge.setAttribute("d", none ? "" : lower);
+    clear(gGrid); clear(gAxis);
+    var ys = Math.max(1, niceStep(ym, 3.5));
+    for (v = 0; v <= ym * 1.0001; v += ys) {
+      el("line", { x1: C.l, x2: C.w - C.r, y1: sy(v), y2: sy(v) }, gGrid);
+      el("text", { x: C.l - 8, y: sy(v) + 4, "text-anchor": "end" }, gAxis).textContent = show(Math.round(v));
+    }
+    var xs = Math.max(1, niceStep(xm, 4));
+    for (v = 0; v <= xm * 1.0001; v += xs) {
+      el("text", { x: sx(v), y: C.h - C.b + 17, "text-anchor": "middle" }, gAxis).textContent = fmt.format(Math.round(v));
+    }
+    var cn = state.n, inRange = cn <= xm * 1.0001;
+    [mark, dotQ, dotA].forEach(function (e) { e.setAttribute("visibility", inRange && !none ? "visible" : "hidden"); });
+    if (inRange && !none) {
+      mark.setAttribute("x1", sx(cn)); mark.setAttribute("x2", sx(cn));
+      mark.setAttribute("y1", base); mark.setAttribute("y2", ya(fW(cn) + fS(cn)));
+      dotQ.setAttribute("cx", sx(cn)); dotQ.setAttribute("cy", ya(fW(cn)));
+      dotA.setAttribute("cx", sx(cn)); dotA.setAttribute("cy", ya(fW(cn) + fS(cn)));
+    }
+    /* warm cache as its own translucent area when both cases are shown */
+    var both = drawn() === "both" && !none, wd = "";
+    if (both) {
+      for (i = 0; i <= 32; i++) { n = xm * i / 32; wd += (i ? "L" : "M") + sx(n).toFixed(1) + " " + ya(warmMult(n)).toFixed(1); }
+      wd += "L" + sx(xm).toFixed(1) + " " + base + "L" + sx(0).toFixed(1) + " " + base + "Z";
+    }
+    areaWarm.setAttribute("d", wd);
+    warmDot.setAttribute("visibility", both && inRange ? "visible" : "hidden");
+    if (both && inRange) { warmDot.setAttribute("cx", sx(cn)); warmDot.setAttribute("cy", ya(warmMult(cn))); }
+    drawBill(xm, base, inRange);
+  }
+  /* the input bill of the chosen models as lines against the right-hand axis */
+  function drawBill(xm, base, inRange) {
+    clear(gBill); clear(gAxisR);
+    var sel = MODELS.filter(function (m) { return m.on; });
+    var showCold = drawn() !== "warm", showWarm = drawn() !== "cold";
+    var bm = yRight(xm) * cur.kr;
+    cur.yr = bm;
+    capR.setAttribute("visibility", bm > 0 ? "visible" : "hidden");
+    if (!(bm > 0)) return;
+    var by = function (v) { return C.h - C.b - v / bm * (C.h - C.t - C.b); };
+    var step = niceStep(bm, 3.5), v;
+    for (v = 0; v <= bm * 1.0001; v += step) {
+      el("text", { x: C.w - C.r + 8, y: by(v) + 4 }, gAxisR).textContent = money(v);
+    }
+    sel.forEach(function (m) {
+      var pts = [], i;
+      for (i = 0; i <= 64; i++) pts.push(xm * i / 64);
+      if (m.tier && m.tier < xm) { pts.push(m.tier, m.tier + 0.5); pts.sort(function (p, q) { return p - q; }); }
+      [[showCold, billCold, ""], [showWarm, billWarm, "5 4"]].forEach(function (k) {
+        if (!k[0]) return;
+        var d = pts.map(function (q, j) { return (j ? "L" : "M") + sx(q).toFixed(1) + " " + by(k[1](m, q) * cur.rise).toFixed(1); }).join("");
+        el("path", { "class": "bill-halo", d: d }, gBill);
+        var ln = el("path", { "class": "bill-line", d: d, style: "stroke:" + m.color }, gBill);
+        if (k[2]) ln.setAttribute("stroke-dasharray", k[2]);
+        if (inRange) el("circle", { "class": "bill-dot", cx: sx(state.n), cy: by(k[1](m, state.n) * cur.rise), r: 4, style: "fill:" + m.color }, gBill);
+      });
+    });
+  }
+
+  /* Ease the axes: the horizontal one to the smallest range that holds the context, and the
+     vertical ones from the scale they showed to the scale the new settings need. */
+  var ease = { raf: 0, x: null, k: null, r: null };
+  function easeTick(now) {
+    var busy = false, f, e;
+    if (ease.x) {
+      if (ease.x.t0 === null) ease.x.t0 = now;
+      f = Math.min(1, (now - ease.x.t0) / 450);
+      e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+      cur.xm = f < 1 ? Math.exp(ease.x.from + (ease.x.to - ease.x.from) * e) : cur.target;
+      if (f < 1) busy = true; else ease.x = null;
+    }
+    if (ease.k) {
+      if (ease.k.t0 === null) ease.k.t0 = now;
+      f = Math.min(1, (now - ease.k.t0) / 500);
+      e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+      cur.kl = Math.exp(Math.log(ease.k.l) * (1 - e));
+      cur.kr = Math.exp(Math.log(ease.k.r) * (1 - e));
+      if (f < 1) busy = true; else { ease.k = null; cur.kl = 1; cur.kr = 1; }
+    }
+    if (ease.r) {
+      if (ease.r.t0 === null) ease.r.t0 = now;
+      f = Math.min(1, (now - ease.r.t0) / 500);
+      e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+      cur.rise = ease.r.from + (ease.r.to - ease.r.from) * e;
+      if (f < 1) busy = true; else { cur.rise = ease.r.to; ease.r = null; }
+    }
+    drawChart();
+    ease.raf = busy ? requestAnimationFrame(easeTick) : 0;
+  }
+  function chartTo(xm) {
+    var want = state.mode === "none" ? 0 : 1;
+    if (reduced) { cur.xm = cur.target = xm; cur.kl = cur.kr = 1; cur.rise = cur.riseTarget = want; drawChart(); return; }
+    if (cur.riseTarget !== want) { cur.riseTarget = want; ease.r = { from: cur.rise, to: want, t0: null }; }
+    /* keep the vertical axes where they are on screen, then let them ease to the new scale */
+    var tl = yLeft(cur.xm), tr = yRight(cur.xm);
+    var kl = cur.yl > 0 && tl > 0 ? cur.yl / tl : 1, kr = cur.yr > 0 && tr > 0 ? cur.yr / tr : 1;
+    cur.kl = kl; cur.kr = kr;
+    if (Math.abs(Math.log(kl)) > 0.002 || Math.abs(Math.log(kr)) > 0.002) ease.k = { l: kl, r: kr, t0: null };
+    else if (!ease.k) { cur.kl = 1; cur.kr = 1; }
+    if (cur.target !== xm) { cur.target = xm; ease.x = { from: Math.log(cur.xm), to: Math.log(xm), t0: null }; }
+    drawChart();
+    if ((ease.x || ease.k || ease.r) && !ease.raf) ease.raf = requestAnimationFrame(easeTick);
+  }
+
+  function nFromEvent(ev) {
+    var rect = chart.getBoundingClientRect();
+    var px = (ev.clientX - rect.left) / rect.width * C.w;
+    var n = Math.round((px - C.l) / (C.w - C.l - C.r) * cur.xm);
+    return Math.max(1, Math.min(Math.round(cur.xm), n));
+  }
+  function showHover(ev) {
+    if (state.mode === "none") { hideHover(); return; }
+    var n = nFromEvent(ev), x = sx(n);
+    hoverLine.setAttribute("x1", x); hoverLine.setAttribute("x2", x);
+    hoverLine.setAttribute("y1", sy(0)); hoverLine.setAttribute("y2", C.t);
+    hoverLine.setAttribute("visibility", "visible");
+    tip.innerHTML = "<strong>" + tokens(n) + "</strong>" +
+      "<span class=\"swatch sw-a\"></span>Attention scores " + show(fS(n)) + "<br>" +
+      "<span class=\"swatch sw-q\"></span>Queries and keys " + show(fW(n)) + "<br>" +
+      "Total " + show(fS(n) + fW(n)) +
+      (state.mode === "both" ? "<br>Newest token, warm cache " + show(warmMult(n)) : "") +
+      MODELS.filter(function (m) { return m.on; }).map(function (m) {
+        return "<br><span class=\"swatch sw-ln\" style=\"border-color:" + m.color + "\"></span>" + m.name + " " + billText(m, n);
+      }).join("");
+    tip.hidden = false;
+    var rect = chart.getBoundingClientRect();
+    var left = x / C.w * rect.width + 12;
+    if (left + tip.offsetWidth > rect.width) left = x / C.w * rect.width - tip.offsetWidth - 12;
+    tip.style.transform = "translate(" + Math.max(0, left) + "px," + (C.t / C.h * rect.height) + "px)";
+  }
+  function hideHover() { hoverLine.setAttribute("visibility", "hidden"); tip.hidden = true; }
+  chart.addEventListener("pointermove", showHover);
+  chart.addEventListener("pointerleave", hideHover);
+  chart.addEventListener("click", function (ev) { stopAll(); setN(nFromEvent(ev)); });
+
+  function billText(m, n) {
+    var c = money(billCold(m, n)) + " cold", w = money(billWarm(m, n)) + " warm";
+    return state.mode === "both" ? c + ", " + w : state.mode === "warm" ? w : state.mode === "cold" ? c : "";
+  }
+  var modelBox = $("model-buttons");
+  ["Anthropic", "OpenAI"].forEach(function (maker) {
+    var row = document.createElement("div"); row.className = "model-row";
+    var lab = document.createElement("span"); lab.className = "mode-label"; lab.textContent = maker; row.appendChild(lab);
+    MODELS.filter(function (m) { return m.maker === maker; }).forEach(function (m) {
+      var bt = document.createElement("button");
+      bt.type = "button"; bt.className = "model-btn"; bt.id = "model-" + m.id;
+      bt.innerHTML = "<span class=\"swatch sw-ln\" style=\"border-color:" + m.color + "\"></span>" + m.name;
+      bt.addEventListener("click", function () { m.on = !m.on; stopAll(); render(); });
+      m.btn = bt; row.appendChild(bt);
+    });
+    modelBox.appendChild(row);
+  });
+  function renderBills() {
+    MODELS.forEach(function (m) { m.btn.setAttribute("aria-pressed", m.on); });
+    var sel = MODELS.filter(function (m) { return m.on; });
+    $("bill-list").innerHTML = state.mode === "none" ? "" : sel.length
+      ? sel.map(function (m) {
+          return "<span><span class=\"swatch sw-ln\" style=\"border-color:" + m.color + "\"></span>" + m.name + ": <b>" + billText(m, state.n) + "</b></span>";
+        }).join("")
+      : "Choose a model to see its input bill on the right-hand axis.";
+  }
+
+  /* ---------- what a new message costs ---------- */
+  var PRICE = { read: 0.10, write: 2.50 };   /* Claude Sonnet 5.5 */
+  var MSTOPS = [1, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+  var mslider = $("msg-length");
+  mslider.min = 0; mslider.max = MSTOPS.length - 1; mslider.step = 1; mslider.value = 4;
+  var mfig = $("msg-fig"), MS = 220, MX = 8, MY = 8;
+  var mMask = el("polygon", { "class": "s-mask" }, mfig);
+  var mHist = el("polygon", { "class": "m-hist" }, mfig);
+  var mNew = el("polygon", { "class": "m-new" }, mfig);
+  var mLine = el("line", { "class": "m-split" }, mfig);
+  function renderMsg() {
+    var n = state.n, m = MSTOPS[parseInt(mslider.value, 10)], warm = warmOn();
+    var mult = state.heads * state.layers, tot = n + m;
+    $("msg-out").innerHTML = "<b>" + fmt.format(m) + "</b> " + (m === 1 ? "token" : "tokens");
+    /* picture: the grid for history plus message; the message is the strip at the bottom */
+    var h = MS * n / tot;
+    if (MS - h < 2.5) h = MS - 2.5;
+    var pt = function (x, y) { return (MX + x).toFixed(1) + "," + (MY + y).toFixed(1); };
+    mMask.setAttribute("points", pt(0, 0) + " " + pt(MS, 0) + " " + pt(MS, MS));
+    mHist.setAttribute("points", pt(0, 0) + " " + pt(0, h) + " " + pt(h, h));
+    mNew.setAttribute("points", pt(0, h) + " " + pt(0, MS) + " " + pt(MS, MS) + " " + pt(h, h));
+    mLine.setAttribute("x1", MX); mLine.setAttribute("x2", MX + h); mLine.setAttribute("y1", MY + h); mLine.setAttribute("y2", MY + h);
+    mfig.classList.toggle("warm", warm);
+    $("msg-key-hist").textContent = "Earlier context, " + tokens(n) + ": " + (warm ? "reused from the cache" : "computed again");
+    $("msg-key-new").textContent = "New message, " + tokens(m) + ": computed";
+    /* compute, per head and layer times the settings */
+    var wW = mult * 2 * m * DM * DH, wS = mult * DH * (m * n + m * (m + 1) / 2);
+    var cW = mult * 2 * tot * DM * DH, cS = mult * DH * tot * tot;
+    $("mw-t").textContent = show(wW + wS); $("mc-t").textContent = show(cW + cS);
+    /* bill for the input side */
+    var wBill = (n * PRICE.read + m * PRICE.write) / 1e6, cBill = tot * PRICE.write / 1e6;
+    $("mw-b").textContent = money(wBill); $("mc-b").textContent = money(cBill);
+    var rc = (cW + cS) / (wW + wS), rb = cBill / wBill;
+    var times = function (x) { return (x >= 100 ? fmt.format(Math.round(x)) : x >= 10 ? x.toFixed(0) : x.toFixed(1)) + " times"; };
+    $("msg-sum").innerHTML = "With a cold cache this message takes <b>" + times(rc) + "</b> the compute and costs <b>" + times(rb) + "</b> as much as with a warm one.";
+    $("msg-table").classList.toggle("warm", state.mode === "warm");
+    $("msg-table").classList.toggle("cold", state.mode === "cold");
+  }
+  mslider.addEventListener("input", function () { renderMsg(); });
+
+  /* ---------- render ---------- */
+  var slider = $("ctx-length");
+  slider.min = 0; slider.max = STOPS.length - 1; slider.step = 1;
+  var EMPTY = { has: function () { return false; } };
+  var key = function (rr, cc) { return rr * 100 + cc; };
+  function cls(node, on, hl, res) {
+    node.classList.toggle("on", !!on);
+    node.classList.toggle("hl", !!hl);
+    node.classList.toggle("res", !!res);
+  }
+  function renderCells() {
+    var n = state.n, a = state.anim;
+    var hq = a ? a.hq : state.hoverQ;   /* a Query cell {r, c} */
+    var hk = a ? a.hk : state.hoverK;   /* a Key cell {r: token, c: head number} */
+    var ha = a ? a.ha : state.hoverA;   /* an Attention cell {r, c} */
+    var pendQ = a ? a.pendQ : EMPTY, pendK = a ? a.pendK : EMPTY, pendA = a ? a.pendA : EMPTY;
+    var rr, cc;
+    for (rr = 0; rr < MAX; rr++) {
+      lanes[rr].classList.toggle("on", rr < n);
+      rowLab[rr].classList.toggle("on", rr < n);
+      rowLab[rr].classList.toggle("hl", !!((hq && hq.r === rr) || (hk && hk.r === rr) || (ha && ha.r === rr)));
+      colLab[rr].classList.toggle("on", rr < n);
+      colLab[rr].classList.toggle("hl", !!((ha && ha.c === rr) || (hk && hk.r === rr)));
+      xrows[rr].classList.toggle("on", rr < n);
+      xrows[rr].classList.toggle("hl", !!((hq && hq.r === rr) || (hk && hk.r === rr)));
+      xrows[rr].classList.toggle("new", rr === n - 1);
+      for (cc = 0; cc < CH; cc++) {
+        var resQ = hq && hq.r === rr && hq.c === cc;
+        var resK = hk && hk.r === rr && hk.c === cc;
+        cls(Q[rr][cc], rr < n && (!pendQ.has(key(rr, cc)) || resQ), resQ || (ha && ha.r === rr), resQ);
+        cls(KT[cc][rr], rr < n && (!pendK.has(key(rr, cc)) || resK), resK || (ha && ha.c === rr), resK);
+        Q[rr][cc].classList.toggle("new", rr === n - 1);
+        KT[cc][rr].classList.toggle("new", rr === n - 1);
+      }
+      for (cc = 0; cc < MAX; cc++) {
+        var res = ha && ha.r === rr && ha.c === cc;
+        var on = rr < n && cc < n && (!pendA.has(key(rr, cc)) || res);
+        var node = A[rr][cc];
+        cls(node, on, res, res);
+        node.classList.toggle("masked", cc > rr);
+        node.classList.toggle("new", rr === n - 1 && cc <= rr);
+        node.style.fillOpacity = on && cc <= rr ? shade[rr][cc].toFixed(2) : "";
+      }
+    }
+    for (cc = 0; cc < CH; cc++) {
+      WQ[cc].classList.toggle("hl", !!(hq && hq.c === cc));
+      WK[cc].classList.toggle("hl", !!(hk && hk.c === cc));
+    }
+    gX.classList.toggle("focus", !!(hq || hk));
+    WQ.g.classList.toggle("focus", !!hq);
+    WK.g.classList.toggle("focus", !!hk);
+    var front = hk ? WK.g : WQ.g;       /* the matrix in use comes to the front */
+    if (gW.lastChild !== front) gW.appendChild(front);
+    Q.g.classList.toggle("focus", !!(hq || ha));
+    KT.g.classList.toggle("focus", !!(hk || ha));
+    A.g.classList.toggle("focus", !!ha);
+    shape(cX, [n, " × 768"]); shape(cQ, [n, " × 64"]);
+    shape(cK, ["64 × ", n]); shape(cA, [n, " × ", n]);
+  }
+
+  function render() {
+    var n = state.n, a = state.anim, v = view(), warm = state.mode === "warm", both = state.mode === "both";
+    fig.classList.toggle("warm", (warm || both) && !a && !state.hoverQ && !state.hoverK && !state.hoverA);
+    fig.style.display = v === "cells" ? "" : "none";
+    sc.style.display = v === "scale" ? "" : "none";
+    if (v === "cells") {
+      renderCells();
+    } else {
+      shape(lX, [n, " × 768"]); shape(lQ, [n, " × 64"]);
+      shape(lK, ["64 × ", n]); shape(lA, [n, " × ", n]);
+      if (n <= DM) {
+        sNote[0].textContent = "Drawn to scale.";
+        sNote[1].textContent = "The weights are the largest";
+        sNote[2].textContent = "thing in the picture.";
+      } else {
+        sNote[0].textContent = "Zoomed out to fit";
+        sNote[1].textContent = fmt.format(n) + " tokens.";
+        sNote[2].textContent = "The weights are still 768 × 64.";
+      }
+      if (state.lastView !== "scale") { cancelAnimationFrame(disp.raf); disp.n = n; disp.target = n; drawScale(n); }
+      else if (disp.target !== n) tweenTo(n);
+    }
+    state.lastView = v;
+    $("view-cells").setAttribute("aria-pressed", v === "cells");
+    $("view-scale").setAttribute("aria-pressed", v === "scale");
+    $("mode-cold").setAttribute("aria-pressed", coldOn());
+    $("mode-warm").setAttribute("aria-pressed", warmOn());
+    $("tile1").style.display = state.mode === "none" ? "none" : "";
+
+    slider.value = nearestStop(n);
+    $("ctx-out").innerHTML = "<b>" + fmt.format(n) + "</b> " + (n === 1 ? "token" : "tokens");
+    var mult = state.heads * state.layers;
+    $("c-total").textContent = show(fW(n) + fS(n));
+    $("t-total").textContent = warm ? "Multiplications for the newest token" : both ? "Whole context, cold cache" : "Multiplications for the whole context";
+    $("tile2").style.display = both ? "" : "none";
+    $("c-total2").textContent = show(warmMult(n));
+    $("chart-title").textContent = "Multiplications and input bill";
+    $("leg-warm").style.display = both ? "" : "none";
+    renderBills();
+    $("chart-hint").textContent = "Areas use the left axis, lines the right axis. " +
+      (state.mode === "none" ? "Both cases are switched off; turn on the cold or the warm cache above to draw them. "
+        : both ? "The yellow area and the dashed lines are the warm cache; the rest is the cold cache. "
+        : warm ? "Warm cache: earlier tokens are reused, so only the newest token's share is computed and the earlier ones are billed as cache reads. "
+        : "Cold cache: everything is computed from the first token and every token is billed as new input. ") +
+      "The axes zoom out when the context outgrows them. Click the chart to jump to a context length.";
+
+    chartTo(levelFor(n));
+    renderMsg();
+  }
+
+  function cancelAnim() { state.run++; state.anim = null; }
+  function setN(n) {
+    cancelAnim();
+    state.n = Math.max(1, Math.min(NMAX, n));
+    render();
+  }
+
+  /* Add one token; in the close-up, fill in its new cells one by one. */
+  function addToken(done) {
+    if (state.n >= MAX) { if (done) done(); return; }
+    if (view() !== "cells" || reduced) { setN(state.n + 1); if (done) done(); return; }
+    cancelAnim();
+    state.n += 1;
+    var n = state.n, my = state.run, i;
+    var seq1 = [], seq2 = [];
+    for (i = 0; i < CH; i++) seq1.push({ r: n - 1, c: i });
+    for (i = 0; i < n; i++) seq2.push({ r: n - 1, c: i });
+    for (i = 0; i < n - 1; i++) seq2.push({ r: i, c: n - 1 });
+    var T1 = 560, T2 = 640, t0 = null;
+    function pending(seq, from) {
+      var s = new Set();
+      for (var kk = from; kk < seq.length; kk++) s.add(key(seq[kk].r, seq[kk].c));
+      return s;
+    }
+    function setFrame(e) {
+      /* phase 1: query cells through W_Q; phase 2: key cells through W_K; phase 3: attention dots */
+      var ph = e < T1 ? 1 : e < 2 * T1 ? 2 : 3;
+      var f = ph === 1 ? e / T1 : ph === 2 ? (e - T1) / T1 : (e - 2 * T1) / T2;
+      var seq = ph === 3 ? seq2 : seq1;
+      var j = Math.min(seq.length - 1, Math.floor(f * seq.length));
+      state.anim = {
+        hq: ph === 1 ? seq1[j] : null,
+        hk: ph === 2 ? seq1[j] : null,
+        ha: ph === 3 ? seq2[j] : null,
+        pendQ: ph === 1 ? pending(seq1, j) : EMPTY,
+        pendK: ph === 1 ? pending(seq1, 0) : ph === 2 ? pending(seq1, j) : EMPTY,
+        pendA: ph === 3 ? pending(seq2, j) : pending(seq2, 0)
+      };
+      render();
+    }
+    function frame(now) {
+      if (my !== state.run) return;
+      if (t0 === null) t0 = now;
+      var e = now - t0;
+      if (e >= 2 * T1 + T2) { state.anim = null; render(); if (done) done(); return; }
+      setFrame(e);
+      requestAnimationFrame(frame);
+    }
+    setFrame(0);
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- controls ---------- */
+  function stopAll() { if (state.anim) { cancelAnim(); render(); } }
+  $("view-cells").addEventListener("click", function () {
+    stopAll();
+    state.pref = "cells";
+    if (state.n > MAX) setN(MAX); else render();
+  });
+  $("view-scale").addEventListener("click", function () { stopAll(); state.pref = "scale"; render(); });
+  /* settings: heads per layer and layers */
+  function readSettings() {
+    var h = parseInt($("set-heads").value, 10), l = parseInt($("set-layers").value, 10);
+    state.heads = Math.max(1, Math.min(256, isNaN(h) ? 1 : h));
+    state.layers = Math.max(1, Math.min(256, isNaN(l) ? 1 : l));
+    stopAll(); render();
+  }
+  function preset(h, l) { $("set-heads").value = h; $("set-layers").value = l; readSettings(); }
+  $("set-heads").addEventListener("input", readSettings);
+  $("set-layers").addEventListener("input", readSettings);
+  $("set-gpt2").addEventListener("click", function () { preset(12, 12); });
+  $("set-one").addEventListener("click", function () { preset(1, 1); });
+  /* the two buttons toggle independently; both may be off */
+  function toggleMode(which) {
+    var cold = coldOn(), warm = warmOn();
+    if (which === "cold") cold = !cold; else warm = !warm;
+    state.mode = cold && warm ? "both" : warm ? "warm" : cold ? "cold" : "none";
+    if (state.mode !== "none") state.shown = state.mode;
+    stopAll(); render();
+  }
+  $("mode-cold").addEventListener("click", function () { toggleMode("cold"); });
+  $("mode-warm").addEventListener("click", function () { toggleMode("warm"); });
+  slider.addEventListener("input", function () { stopAll(); setN(STOPS[parseInt(slider.value, 10)]); });
+  document.addEventListener("keydown", function (ev) {
+    var t = ev.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "BUTTON")) return;
+    if (ev.key === "ArrowRight" || ev.key === "PageDown") {
+      stopAll();
+      if (state.n < MAX) addToken(); else if (nextStop(state.n)) setN(nextStop(state.n));
+      ev.preventDefault();
+    }
+    if (ev.key === "ArrowLeft" || ev.key === "PageUp") {
+      stopAll();
+      if (prevStop(state.n)) setN(prevStop(state.n));
+      ev.preventDefault();
+    }
+  });
+
+  /* ---------- hover in the close-up: what produces this cell ---------- */
+  var same = function (p, o) { return (!p && !o) || (p && o && p.r === o.r && p.c === o.c); };
+  fig.addEventListener("pointermove", function (ev) {
+    var t = ev.target, q = null, kc = null, a = null;
+    var m = t && t.getAttribute ? t.getAttribute("data-m") : null;
+    if (m) {
+      var rr = +t.getAttribute("data-r"), cc = +t.getAttribute("data-c");
+      if (m === "q" && rr < state.n) q = { r: rr, c: cc };
+      if (m === "k" && cc < state.n) kc = { r: cc, c: rr };
+      if (m === "a" && rr < state.n && cc < state.n) a = { r: rr, c: cc };
+    }
+    if (same(q, state.hoverQ) && same(kc, state.hoverK) && same(a, state.hoverA)) return;
+    state.hoverQ = q; state.hoverK = kc; state.hoverA = a;
+    if (!state.anim) render();
+  });
+  fig.addEventListener("pointerleave", function () {
+    if (!state.hoverQ && !state.hoverK && !state.hoverA) return;
+    state.hoverQ = null; state.hoverK = null; state.hoverA = null;
+    if (!state.anim) render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
