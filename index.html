@@ -187,38 +187,15 @@ main {
   padding: 14px; background: var(--bg); border: 1px solid var(--rule); border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
 }
-.settings-panel input {
+.settings-panel .wide, .settings-panel select { grid-column: 1 / -1; }
+.settings-panel .wide { margin-bottom: -6px; }
+.settings-panel input, .settings-panel select {
   font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--ink-3); border-radius: 6px;
   background: var(--bg); color: var(--ink); font-variant-numeric: tabular-nums;
 }
 .settings-row, .settings-panel .hint { grid-column: 1 / -1; }
 .settings-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .mult-note { color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
-.msg { display: flex; flex-direction: column; gap: 12px; padding-top: 18px; border-top: 1px solid var(--rule); }
-.msg-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; }
-.msg-head h2 { margin: 0; font-size: 18px; font-weight: 300; color: var(--ink-2); }
-.msg-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; flex: 1 1 360px; justify-content: flex-end; }
-.msg-ctl label { color: var(--ink-2); }
-.msg-ctl input { flex: 1 1 180px; max-width: 360px; accent-color: var(--att); height: 24px; }
-.msg-out { font-size: 18px; font-weight: 300; min-width: 7.6em; font-variant-numeric: tabular-nums; }
-.msg-out b { font-weight: 700; }
-.msg-body { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 36px; align-items: start; }
-.msg-pic { display: flex; flex-direction: column; gap: 8px; }
-.msg-pic .key { display: flex; flex-direction: column; gap: 4px; margin-top: 0; font-size: 13.5px; color: var(--ink-2); }
-.m-hist { fill: var(--att); }
-.warm .m-hist { fill-opacity: 0.22; }
-.m-new { fill: var(--att); }
-.m-split { stroke: var(--bg); stroke-width: 1.2; }
-.sw-hist { background: var(--att); opacity: 0.3; }
-.msg-nums { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-table { border-collapse: collapse; width: 100%; font-size: 15px; }
-th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; font-variant-numeric: tabular-nums; }
-th:first-child, td:first-child { text-align: left; padding-left: 0; }
-th { font-weight: 400; color: var(--ink-2); font-size: 13.5px; }
-.table-wrap { overflow-x: auto; }
-table.warm .col-w, table.cold .col-c { background: var(--lane); font-weight: 700; color: var(--ink); }
-.msg .readout { min-height: 0; padding: 10px 0; border-top: 1px solid var(--rule); }
-@media (max-width: 700px) { .msg-body { grid-template-columns: minmax(0, 1fr); } .msg-pic { max-width: 300px; } }
 .mode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .mode-label { color: var(--ink-2); }
 .warm .xrow.on:not(.new), .warm .mx-q .c.on:not(.new), .warm .mx-k .c.on:not(.new), .warm .mx-a .c.on:not(.new) { opacity: 0.28; }
@@ -294,14 +271,13 @@ svg { display: block; width: 100%; height: auto; }
 }
 .readout b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; margin-bottom: 4px; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--ink-2); }
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin-top: 4px; font-size: 13.5px; color: var(--ink-2); }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
 .sw-q { background: var(--q); }
 .sw-a { background: var(--att); }
 .chart-box { position: relative; }
-.chart-box svg { cursor: crosshair; touch-action: none; }
 .grid line { stroke: var(--rule); stroke-width: 1; }
-.axis text { fill: var(--ink-2); font-family: var(--font); font-size: 11.5px; }
+.axis text { fill: var(--ink-2); font-family: var(--font); font-size: 13.5px; }
 .axis .title { fill: var(--ink-3); }
 .dlabel { fill: var(--ink); font-family: var(--font); font-size: 11.5px; font-weight: 700; }
 .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
@@ -314,7 +290,6 @@ svg { display: block; width: 100%; height: auto; }
 .sw-w { background: var(--warm); }
 .bill-halo { fill: none; stroke: var(--bg); stroke-width: 4.5; stroke-linejoin: round; }
 .bill-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
-.bill-dot { stroke: var(--bg); stroke-width: 1.5; }
 .sw-ln { width: 16px; height: 0; border-radius: 0; background: none; border-top: 3px solid; vertical-align: middle; }
 .models { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .model-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -325,7 +300,6 @@ svg { display: block; width: 100%; height: auto; }
 .bill-list { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .bill-list b { color: var(--ink); }
 .warm-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
-.dot.wd { fill: var(--bg); stroke: var(--ink); stroke-width: 2; }
 .sw-line { width: 14px; height: 0; border-radius: 0; border-top: 2px solid var(--ink); vertical-align: middle; }
 .area.bw { fill: var(--bw); fill-opacity: 0.9; }
 .area.br { fill: var(--br); }
@@ -333,32 +307,7 @@ svg { display: block; width: 100%; height: auto; }
 .sw-br { background: var(--br); }
 .bill-total { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .edge { fill: none; stroke: var(--bg); stroke-width: 1.5; }
-.mark { stroke: var(--ink); stroke-width: 1.2; }
-.dot.t { fill: var(--ink); }
-.axis-title { fill: var(--ink-3); font-family: var(--font); font-size: 11.5px; }
-.dot { stroke: var(--bg); stroke-width: 2; }
-.dot.q { fill: var(--q); }
-.dot.a { fill: var(--att); }
-.hover-line { stroke: var(--ink); stroke-width: 1; }
-.hover-dot { fill: var(--bg); stroke-width: 2; }
-.hover-dot.q { stroke: var(--q); }
-.hover-dot.a { stroke: var(--att); }
-.tip {
-  position: absolute;
-  top: 0; left: 0;
-  pointer-events: none;
-  background: var(--ink);
-  color: var(--bg);
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.tip[hidden] { display: none; }
-.tip strong { display: block; }
-.tip .swatch { width: 8px; height: 8px; }
+.axis-title { fill: var(--ink-3); font-family: var(--font); font-size: 13.5px; }
 
 /* Below */
 .below {
@@ -394,7 +343,7 @@ tr:last-child td { border-bottom: 0; }
 
   <header>
     <h1>Why does a longer context cost more?</h1>
-    <p class="lede">The weights never change size. Every token adds one row to the input, so the matrix products inside each block get larger. Sizes are GPT-2's: 768 numbers per token and 64 per attention head. Slide the context from 1 token to a million.</p>
+    <p class="lede">The weights never change size. Every token adds one row to the input, so the matrix products inside each block get larger. Sizes are <span id="lede-sizes">GPT-2's: 768 numbers per token and 64 per attention head</span>. Slide the context from 1 token to a million.</p>
   </header>
 
   <section class="controls" aria-label="Controls">
@@ -404,15 +353,21 @@ tr:last-child td { border-bottom: 0; }
     <details class="settings" id="settings">
       <summary>Settings</summary>
       <div class="settings-panel">
+        <label for="set-size" class="wide">Numbers per token × per head</label>
+        <select id="set-size">
+          <option value="gpt2">GPT-2: 768 × 64</option>
+          <option value="opus">Opus 5.5 guess: 8,192 × 128</option>
+        </select>
         <label for="set-heads">Heads per layer</label>
         <input type="number" id="set-heads" min="1" max="256" step="1" value="1">
         <label for="set-layers">Layers</label>
         <input type="number" id="set-layers" min="1" max="256" step="1" value="1">
         <div class="settings-row">
           <button type="button" id="set-gpt2">GPT-2: 12 × 12</button>
+          <button type="button" id="set-opus">Opus 5.5 guess: 64 × 100</button>
           <button type="button" id="set-one">One head</button>
         </div>
-        <p class="hint">Every head in every layer repeats both products with its own weights. The counts and the chart are multiplied; the figure still shows one head.</p>
+        <p class="hint">Every head in every layer repeats both products with its own weights. The counts and the chart are multiplied; the figure still shows one head. Anthropic does not publish the sizes of Opus 5.5; these are a guess based on open models from 2026.</p>
       </div>
     </details>
   </section>
@@ -439,83 +394,37 @@ tr:last-child td { border-bottom: 0; }
         </div>
         <span class="mult-note" id="mult-note">Counting 1 head × 1 layer</span>
       </div>
-      <div class="tiles">
-        <div class="tile" id="tile1">
-          <span class="tile-label" id="t-total">Multiplications for the whole context</span>
-          <span class="tile-value" id="c-total"></span>
-        </div>
-        <div class="tile" id="tile2" style="display:none">
-          <span class="tile-label">Newest token, warm cache</span>
-          <span class="tile-value" id="c-total2"></span>
-        </div>
-      </div>
-
-      
-
       <section aria-label="Growth chart">
         <div class="chart-head">
-          <h2 id="chart-title">Multiplications for the whole context</h2>
-          <div class="legend">
-            <span><span class="swatch sw-a"></span>Attention scores</span>
-            <span><span class="swatch sw-q"></span>Making queries and keys</span>
-            <span id="leg-warm" style="display:none"><span class="swatch sw-w"></span>Newest token, warm cache</span>
-          </div>
+          <h2 id="chart-title">Multiplications and input bill</h2>
         </div>
         <div class="chart-box">
           <svg id="svg-chart" viewBox="0 0 640 300" role="img" aria-label="Chart with two vertical axes against context length. Areas on the left axis: multiplications for queries and keys and for attention scores. Lines on the right axis: the input bill of the chosen models."></svg>
-          <div class="tip" id="tip" hidden></div>
+        </div>
+        <div class="legend">
+          <span><span class="swatch sw-a"></span>Attention scores</span>
+          <span><span class="swatch sw-q"></span>Making queries and keys</span>
+          <span id="leg-warm" style="display:none"><span class="swatch sw-w"></span>Newest token, warm cache</span>
         </div>
         <div class="models" id="model-buttons" aria-label="Models whose input bill is drawn"></div>
         <p class="bill-list" id="bill-list"></p>
-        <p class="hint" id="chart-hint"></p>
-        <p class="hint">List prices per million input tokens on 16 November 2026, cache write and cache read: Haiku 5.5 $0.125 and $0.01 (five times that for prompts over 100,000 tokens), Sonnet 5.5 $2.50 and $0.10, Opus 5.5 $5 and $0.20, Fable 5.2 $10 and $0.20; GPT-6 Luna $0.125 and $0.01, GPT-6.1 Terra $1.25 and $0.05, GPT-6.1 Sol $2.50 and $0.10, GPT-6 Astra $12.50 and $1 (OpenAI doubles these for prompts over 272,000 tokens). Solid lines are the cold cache, dashed lines the warm cache.</p>
       </section>
 
     </div>
   </main>
-
-  <section class="msg" aria-label="What a new message costs">
-    <div class="msg-head">
-      <h2>What a new message costs</h2>
-      <div class="msg-ctl">
-        <label for="msg-length">Message length</label>
-        <input type="range" id="msg-length" min="0" max="13" step="1" value="4">
-        <output class="msg-out" id="msg-out" for="msg-length"><b>100</b> tokens</output>
-      </div>
-    </div>
-    <div class="msg-body">
-      <div class="msg-pic">
-        <svg id="msg-fig" viewBox="0 0 236 236" role="img" aria-label="The attention grid for the earlier context plus the new message. The new message is a strip along the bottom."></svg>
-        <div class="key">
-          <span><span class="swatch sw-hist"></span><span id="msg-key-hist"></span></span>
-          <span><span class="swatch sw-a"></span><span id="msg-key-new"></span></span>
-        </div>
-      </div>
-      <div class="msg-nums">
-        <div class="table-wrap">
-          <table id="msg-table">
-            <thead>
-              <tr><th scope="col">For this message</th><th scope="col" class="col-w">Warm cache</th><th scope="col" class="col-c">Cold cache</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Total multiplications</td><td class="col-w" id="mw-t"></td><td class="col-c" id="mc-t"></td></tr>
-              <tr><td>Input bill</td><td class="col-w" id="mw-b"></td><td class="col-c" id="mc-b"></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="readout" id="msg-sum"></p>
-        <p class="hint">The earlier context is the length set at the top; the message is added after it. The switch above picks which column the picture shows. Multiplications follow the heads and layers in Settings. The bill uses Claude Sonnet 5.5 list prices from 15 November 2026: $0.10 per million tokens read from the cache and $2.50 per million written to it. The reply is not included.</p>
-      </div>
-    </div>
-  </section>
 
 </div>
 
 <script>
 (function () {
   "use strict";
-  /* Sizes are GPT-2's: DM numbers per token, DH per head. The close-up draws 1 of every 16. */
+  /* DM numbers per token, DH per head; Settings switches them between the entries of SIZES.
+     The close-up always draws CM by CH cells (1 of every 16 at GPT-2 sizes) and only its labels change. */
   var MAX = 12, DM = 768, DH = 64, CM = 48, CH = 4, START = 6;
+  var SIZES = {
+    gpt2: { dm: 768, dh: 64, heads: 12, layers: 12, lede: "GPT-2's" },
+    opus: { dm: 8192, dh: 128, heads: 64, layers: 100, lede: "a guess at Claude Opus 5.5" }
+  };
   var STOPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768,
                1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576, 32768, 49152, 65536, 98304,
                131072, 196608, 262144, 393216, 524288, 786432, 1048576];
@@ -526,20 +435,16 @@ tr:last-child td { border-bottom: 0; }
   var XX = 58, QX = 262, WKX = QX + 12, AX = 366, WYQ = 40, WYK = 30, ROWY = 244, KTY = ROWY - 12 - CH * P, SIDE = 192;
   var NS = "http://www.w3.org/2000/svg";
   var fmt = new Intl.NumberFormat("en-US");
-  var big = new Intl.NumberFormat("en-US", { notation: "compact", compactDisplay: "long", maximumSignificantDigits: 3 });
-  var show = function (v) { return v < 1e6 ? fmt.format(v) : big.format(v); };
   var $ = function (id) { return document.getElementById(id); };
   var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var costW = function (n) { return 2 * n * DM * DH; };
   var costS = function (n) { return n * n * DH; };
-  var EQUAL = 2 * DM;                      /* context length where both cost the same */
   function el(name, attrs, parent) {
     var node = document.createElementNS(NS, name);
     for (var k in attrs) node.setAttribute(k, attrs[k]);
     if (parent) parent.appendChild(node);
     return node;
   }
-  function tokens(n) { return fmt.format(n) + (n === 1 ? " token" : " tokens"); }
   function word(i) { return "“" + WORDS[i] + "”"; }
   function nearestStop(n) {
     var best = 0, d = Infinity;
@@ -680,11 +585,12 @@ tr:last-child td { border-bottom: 0; }
   place(cX, XX + CM * M / 2, BOT, "middle"); place(cQ, QX + 32, BOT, "middle");
   place(cA, AX + MAX * P / 2, BOT, "middle"); place(cK, AX + MAX * P + 8, KTY + 30, "start");
   place(cWQ, QX - 12, WYQ + 9, "end"); place(cWK, WKX + 32, 9, "middle");
-  shape(cWQ, ["768 × 64"]); shape(cWK, ["768 × 64"]);
-  [["Both weight matrices keep this", "fig-note strong"], ["size at every context length:", "fig-note strong"],
-   ["768 rows, one per number in a", "fig-note"], ["token's embedding, and 64", "fig-note"],
-   ["columns, one per number in", "fig-note"], ["its query or key.", "fig-note"]].forEach(function (ln, i) {
-    el("text", { "class": ln[1], x: QX - 12, y: WYQ + 78 + i * 14, "text-anchor": "end" }, fig).textContent = ln[0];
+  var wNote = [["Both weight matrices keep this", "fig-note strong"], ["size at every context length:", "fig-note strong"],
+   ["", "fig-note"], ["", "fig-note"],
+   ["columns, one per number in", "fig-note"], ["its query or key.", "fig-note"]].map(function (ln, i) {
+    var tx = el("text", { "class": ln[1], x: QX - 12, y: WYQ + 78 + i * 14, "text-anchor": "end" }, fig);
+    tx.textContent = ln[0];
+    return tx;
   });
 
   /* ================= to scale ================= */
@@ -694,7 +600,15 @@ tr:last-child td { border-bottom: 0; }
   var lX = label(sc, "name-emb", ["Embedding"]), lQ = label(sc, "name-q", ["Query"]);
   var lA = label(sc, "name-a", ["Attention"]), lK = label(sc, "name-k", ["Key"]);
   var lW = label(sc, "name-q", ["W", "_Q", ", W", "_K"]);
-  shape(lW, ["768 × 64 each"]);
+  /* every label that states the weight sizes; called again when Settings changes them */
+  function sizeLabels(name) {
+    shape(cWQ, [DM, " × ", DH]); shape(cWK, [DM, " × ", DH]);
+    shape(lW, [DM, " × ", DH, " each"]);
+    wNote[2].textContent = fmt.format(DM) + " rows, one per number in a";
+    wNote[3].textContent = "token's embedding, and " + DH;
+    $("lede-sizes").textContent = name + ": " + fmt.format(DM) + " numbers per token and " + DH + " per attention head";
+  }
+  sizeLabels(SIZES.gpt2.lede);
   var sNote = [0, 1, 2].map(function (i) {
     return el("text", { "class": i === 0 ? "fig-note strong" : "fig-note", x: 4, y: 48 + i * 14 }, sc);
   });
@@ -769,10 +683,8 @@ tr:last-child td { border-bottom: 0; }
   function billCold(m, n) { return n * m.write * tierMult(m, n) / 1e6; }
   function billWarm(m, n) { return (Math.max(n - 1, 0) * m.read + Math.min(n, 1) * m.write) * tierMult(m, n) / 1e6; }
 
-  /* ---------- chart: stacked, linear axes, zooms out with the context ---------- */
-  var C = { w: 640, h: 300, l: 78, r: 70, t: 30, b: 42 };
-  var LEVELS = [12, 48, 192, 768, 3072, 12288, 49152, 196608, NMAX];
-  function levelFor(n) { for (var i = 0; i < LEVELS.length; i++) if (LEVELS[i] >= n) return LEVELS[i]; return NMAX; }
+  /* ---------- chart: stacked, linear axes; the horizontal axis always ends at the context length ---------- */
+  var C = { w: 640, h: 300, l: 78, r: 90, t: 30, b: 42 };
   var chart = $("svg-chart");
   /* while an axis eases to a smaller range, marks that overshoot are cut at the plot edge */
   var clipDef = el("clipPath", { id: "plot-clip" }, el("defs", {}, chart));
@@ -785,21 +697,17 @@ tr:last-child td { border-bottom: 0; }
   var gAxis = el("g", { "class": "axis" }, chart);
   var gAxisR = el("g", { "class": "axis" }, chart);
   var gBill = el("g", {}, chart);
-  el("text", { "class": "axis-title", x: 2, y: 14 }, chart).textContent = "multiplications";
+  var capL = el("text", { "class": "axis-title", x: 2, y: 14 }, chart);
+  /* large left-axis ticks are written in the unit named in the axis title, so the labels stay short */
+  var UNITS = [[1e18, "quintillions"], [1e15, "quadrillions"], [1e12, "trillions"], [1e9, "billions"], [1e6, "millions"]];
   var capR = el("text", { "class": "axis-title", x: C.w - 2, y: 14, "text-anchor": "end" }, chart);
   capR.textContent = "input bill";
   [areaA, areaQ, edge, areaWarm, gBill].forEach(function (e) { e.setAttribute("clip-path", "url(#plot-clip)"); });
   el("text", { "class": "axis-title", x: (C.l + C.w - C.r) / 2, y: C.h - 6, "text-anchor": "middle" }, chart).textContent = "Context length (tokens)";
-  var mark = el("line", { "class": "mark" }, chart);
-  var dotQ = el("circle", { "class": "dot t", r: 4.5 }, chart);
-  var dotA = el("circle", { "class": "dot t", r: 4.5 }, chart);
-  var warmDot = el("circle", { "class": "dot wd", r: 4.5 }, chart);
-  var hoverLine = el("line", { "class": "hover-line", visibility: "hidden" }, chart);
-  var tip = $("tip");
   /* displayed scales: xm for the horizontal axis, yl and yr for the two vertical ones.
      kl and kr hold the vertical axes at their previous scale while they ease to a new one. */
   /* rise: 0 with both cases off, 1 when a case is shown; the marks grow and sink with it */
-  var cur = { xm: levelFor(START), target: levelFor(START), yl: 0, yr: 0, kl: 1, kr: 1, rise: 1, riseTarget: 1 };
+  var cur = { xm: START, target: START, yl: 0, yr: 0, kl: 1, kr: 1, rise: 1, riseTarget: 1 };
   var gone = function () { return state.mode === "none" && cur.rise <= 0.001; };
   var yShown = function (xm) { return fW(xm) + fS(xm); };
   /* with nothing shown the left axis runs from 0 to 1 */
@@ -832,22 +740,16 @@ tr:last-child td { border-bottom: 0; }
     areaA.setAttribute("d", none ? "" : lower + upper + "Z");
     edge.setAttribute("d", none ? "" : lower);
     clear(gGrid); clear(gAxis);
-    var ys = Math.max(1, niceStep(ym, 3.5));
+    var ys = Math.max(1, niceStep(ym, 3.5)), unit = 1, uname = "";
+    for (i = 0; i < UNITS.length; i++) if (ys >= UNITS[i][0] * 0.999) { unit = UNITS[i][0]; uname = " (" + UNITS[i][1] + ")"; break; }
+    capL.textContent = "multiplications" + uname;
     for (v = 0; v <= ym * 1.0001; v += ys) {
       el("line", { x1: C.l, x2: C.w - C.r, y1: sy(v), y2: sy(v) }, gGrid);
-      el("text", { x: C.l - 8, y: sy(v) + 4, "text-anchor": "end" }, gAxis).textContent = show(Math.round(v));
+      el("text", { x: C.l - 8, y: sy(v) + 4.5, "text-anchor": "end" }, gAxis).textContent = fmt.format(Math.round(v / unit));
     }
     var xs = Math.max(1, niceStep(xm, 4));
     for (v = 0; v <= xm * 1.0001; v += xs) {
       el("text", { x: sx(v), y: C.h - C.b + 17, "text-anchor": "middle" }, gAxis).textContent = fmt.format(Math.round(v));
-    }
-    var cn = state.n, inRange = cn <= xm * 1.0001;
-    [mark, dotQ, dotA].forEach(function (e) { e.setAttribute("visibility", inRange && !none ? "visible" : "hidden"); });
-    if (inRange && !none) {
-      mark.setAttribute("x1", sx(cn)); mark.setAttribute("x2", sx(cn));
-      mark.setAttribute("y1", base); mark.setAttribute("y2", ya(fW(cn) + fS(cn)));
-      dotQ.setAttribute("cx", sx(cn)); dotQ.setAttribute("cy", ya(fW(cn)));
-      dotA.setAttribute("cx", sx(cn)); dotA.setAttribute("cy", ya(fW(cn) + fS(cn)));
     }
     /* warm cache as its own translucent area when both cases are shown */
     var both = drawn() === "both" && !none, wd = "";
@@ -856,12 +758,10 @@ tr:last-child td { border-bottom: 0; }
       wd += "L" + sx(xm).toFixed(1) + " " + base + "L" + sx(0).toFixed(1) + " " + base + "Z";
     }
     areaWarm.setAttribute("d", wd);
-    warmDot.setAttribute("visibility", both && inRange ? "visible" : "hidden");
-    if (both && inRange) { warmDot.setAttribute("cx", sx(cn)); warmDot.setAttribute("cy", ya(warmMult(cn))); }
-    drawBill(xm, base, inRange);
+    drawBill(xm);
   }
   /* the input bill of the chosen models as lines against the right-hand axis */
-  function drawBill(xm, base, inRange) {
+  function drawBill(xm) {
     clear(gBill); clear(gAxisR);
     var sel = MODELS.filter(function (m) { return m.on; });
     var showCold = drawn() !== "warm", showWarm = drawn() !== "cold";
@@ -872,7 +772,7 @@ tr:last-child td { border-bottom: 0; }
     var by = function (v) { return C.h - C.b - v / bm * (C.h - C.t - C.b); };
     var step = niceStep(bm, 3.5), v;
     for (v = 0; v <= bm * 1.0001; v += step) {
-      el("text", { x: C.w - C.r + 8, y: by(v) + 4 }, gAxisR).textContent = money(v);
+      el("text", { x: C.w - C.r + 8, y: by(v) + 4.5 }, gAxisR).textContent = money(v);
     }
     sel.forEach(function (m) {
       var pts = [], i;
@@ -884,12 +784,11 @@ tr:last-child td { border-bottom: 0; }
         el("path", { "class": "bill-halo", d: d }, gBill);
         var ln = el("path", { "class": "bill-line", d: d, style: "stroke:" + m.color }, gBill);
         if (k[2]) ln.setAttribute("stroke-dasharray", k[2]);
-        if (inRange) el("circle", { "class": "bill-dot", cx: sx(state.n), cy: by(k[1](m, state.n) * cur.rise), r: 4, style: "fill:" + m.color }, gBill);
       });
     });
   }
 
-  /* Ease the axes: the horizontal one to the smallest range that holds the context, and the
+  /* Ease the axes: the horizontal one to the context length, and the
      vertical ones from the scale they showed to the scale the new settings need. */
   var ease = { raf: 0, x: null, k: null, r: null };
   function easeTick(now) {
@@ -934,37 +833,6 @@ tr:last-child td { border-bottom: 0; }
     if ((ease.x || ease.k || ease.r) && !ease.raf) ease.raf = requestAnimationFrame(easeTick);
   }
 
-  function nFromEvent(ev) {
-    var rect = chart.getBoundingClientRect();
-    var px = (ev.clientX - rect.left) / rect.width * C.w;
-    var n = Math.round((px - C.l) / (C.w - C.l - C.r) * cur.xm);
-    return Math.max(1, Math.min(Math.round(cur.xm), n));
-  }
-  function showHover(ev) {
-    if (state.mode === "none") { hideHover(); return; }
-    var n = nFromEvent(ev), x = sx(n);
-    hoverLine.setAttribute("x1", x); hoverLine.setAttribute("x2", x);
-    hoverLine.setAttribute("y1", sy(0)); hoverLine.setAttribute("y2", C.t);
-    hoverLine.setAttribute("visibility", "visible");
-    tip.innerHTML = "<strong>" + tokens(n) + "</strong>" +
-      "<span class=\"swatch sw-a\"></span>Attention scores " + show(fS(n)) + "<br>" +
-      "<span class=\"swatch sw-q\"></span>Queries and keys " + show(fW(n)) + "<br>" +
-      "Total " + show(fS(n) + fW(n)) +
-      (state.mode === "both" ? "<br>Newest token, warm cache " + show(warmMult(n)) : "") +
-      MODELS.filter(function (m) { return m.on; }).map(function (m) {
-        return "<br><span class=\"swatch sw-ln\" style=\"border-color:" + m.color + "\"></span>" + m.name + " " + billText(m, n);
-      }).join("");
-    tip.hidden = false;
-    var rect = chart.getBoundingClientRect();
-    var left = x / C.w * rect.width + 12;
-    if (left + tip.offsetWidth > rect.width) left = x / C.w * rect.width - tip.offsetWidth - 12;
-    tip.style.transform = "translate(" + Math.max(0, left) + "px," + (C.t / C.h * rect.height) + "px)";
-  }
-  function hideHover() { hoverLine.setAttribute("visibility", "hidden"); tip.hidden = true; }
-  chart.addEventListener("pointermove", showHover);
-  chart.addEventListener("pointerleave", hideHover);
-  chart.addEventListener("click", function (ev) { stopAll(); setN(nFromEvent(ev)); });
-
   function billText(m, n) {
     var c = money(billCold(m, n)) + " cold", w = money(billWarm(m, n)) + " warm";
     return state.mode === "both" ? c + ", " + w : state.mode === "warm" ? w : state.mode === "cold" ? c : "";
@@ -991,46 +859,6 @@ tr:last-child td { border-bottom: 0; }
         }).join("")
       : "Choose a model to see its input bill on the right-hand axis.";
   }
-
-  /* ---------- what a new message costs ---------- */
-  var PRICE = { read: 0.10, write: 2.50 };   /* Claude Sonnet 5.5 */
-  var MSTOPS = [1, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
-  var mslider = $("msg-length");
-  mslider.min = 0; mslider.max = MSTOPS.length - 1; mslider.step = 1; mslider.value = 4;
-  var mfig = $("msg-fig"), MS = 220, MX = 8, MY = 8;
-  var mMask = el("polygon", { "class": "s-mask" }, mfig);
-  var mHist = el("polygon", { "class": "m-hist" }, mfig);
-  var mNew = el("polygon", { "class": "m-new" }, mfig);
-  var mLine = el("line", { "class": "m-split" }, mfig);
-  function renderMsg() {
-    var n = state.n, m = MSTOPS[parseInt(mslider.value, 10)], warm = warmOn();
-    var mult = state.heads * state.layers, tot = n + m;
-    $("msg-out").innerHTML = "<b>" + fmt.format(m) + "</b> " + (m === 1 ? "token" : "tokens");
-    /* picture: the grid for history plus message; the message is the strip at the bottom */
-    var h = MS * n / tot;
-    if (MS - h < 2.5) h = MS - 2.5;
-    var pt = function (x, y) { return (MX + x).toFixed(1) + "," + (MY + y).toFixed(1); };
-    mMask.setAttribute("points", pt(0, 0) + " " + pt(MS, 0) + " " + pt(MS, MS));
-    mHist.setAttribute("points", pt(0, 0) + " " + pt(0, h) + " " + pt(h, h));
-    mNew.setAttribute("points", pt(0, h) + " " + pt(0, MS) + " " + pt(MS, MS) + " " + pt(h, h));
-    mLine.setAttribute("x1", MX); mLine.setAttribute("x2", MX + h); mLine.setAttribute("y1", MY + h); mLine.setAttribute("y2", MY + h);
-    mfig.classList.toggle("warm", warm);
-    $("msg-key-hist").textContent = "Earlier context, " + tokens(n) + ": " + (warm ? "reused from the cache" : "computed again");
-    $("msg-key-new").textContent = "New message, " + tokens(m) + ": computed";
-    /* compute, per head and layer times the settings */
-    var wW = mult * 2 * m * DM * DH, wS = mult * DH * (m * n + m * (m + 1) / 2);
-    var cW = mult * 2 * tot * DM * DH, cS = mult * DH * tot * tot;
-    $("mw-t").textContent = show(wW + wS); $("mc-t").textContent = show(cW + cS);
-    /* bill for the input side */
-    var wBill = (n * PRICE.read + m * PRICE.write) / 1e6, cBill = tot * PRICE.write / 1e6;
-    $("mw-b").textContent = money(wBill); $("mc-b").textContent = money(cBill);
-    var rc = (cW + cS) / (wW + wS), rb = cBill / wBill;
-    var times = function (x) { return (x >= 100 ? fmt.format(Math.round(x)) : x >= 10 ? x.toFixed(0) : x.toFixed(1)) + " times"; };
-    $("msg-sum").innerHTML = "With a cold cache this message takes <b>" + times(rc) + "</b> the compute and costs <b>" + times(rb) + "</b> as much as with a warm one.";
-    $("msg-table").classList.toggle("warm", state.mode === "warm");
-    $("msg-table").classList.toggle("cold", state.mode === "cold");
-  }
-  mslider.addEventListener("input", function () { renderMsg(); });
 
   /* ---------- render ---------- */
   var slider = $("ctx-length");
@@ -1088,8 +916,8 @@ tr:last-child td { border-bottom: 0; }
     Q.g.classList.toggle("focus", !!(hq || ha));
     KT.g.classList.toggle("focus", !!(hk || ha));
     A.g.classList.toggle("focus", !!ha);
-    shape(cX, [n, " × 768"]); shape(cQ, [n, " × 64"]);
-    shape(cK, ["64 × ", n]); shape(cA, [n, " × ", n]);
+    shape(cX, [n, " × ", DM]); shape(cQ, [n, " × ", DH]);
+    shape(cK, [DH, " × ", n]); shape(cA, [n, " × ", n]);
   }
 
   function render() {
@@ -1100,8 +928,8 @@ tr:last-child td { border-bottom: 0; }
     if (v === "cells") {
       renderCells();
     } else {
-      shape(lX, [n, " × 768"]); shape(lQ, [n, " × 64"]);
-      shape(lK, ["64 × ", n]); shape(lA, [n, " × ", n]);
+      shape(lX, [n, " × ", DM]); shape(lQ, [n, " × ", DH]);
+      shape(lK, [DH, " × ", n]); shape(lA, [n, " × ", n]);
       if (n <= DM) {
         sNote[0].textContent = "Drawn to scale.";
         sNote[1].textContent = "The weights are the largest";
@@ -1109,7 +937,7 @@ tr:last-child td { border-bottom: 0; }
       } else {
         sNote[0].textContent = "Zoomed out to fit";
         sNote[1].textContent = fmt.format(n) + " tokens.";
-        sNote[2].textContent = "The weights are still 768 × 64.";
+        sNote[2].textContent = "The weights are still " + fmt.format(DM) + " × " + DH + ".";
       }
       if (state.lastView !== "scale") { cancelAnimationFrame(disp.raf); disp.n = n; disp.target = n; drawScale(n); }
       else if (disp.target !== n) tweenTo(n);
@@ -1119,27 +947,15 @@ tr:last-child td { border-bottom: 0; }
     $("view-scale").setAttribute("aria-pressed", v === "scale");
     $("mode-cold").setAttribute("aria-pressed", coldOn());
     $("mode-warm").setAttribute("aria-pressed", warmOn());
-    $("tile1").style.display = state.mode === "none" ? "none" : "";
 
     slider.value = nearestStop(n);
     $("ctx-out").innerHTML = "<b>" + fmt.format(n) + "</b> " + (n === 1 ? "token" : "tokens");
-    var mult = state.heads * state.layers;
-    $("c-total").textContent = show(fW(n) + fS(n));
-    $("t-total").textContent = warm ? "Multiplications for the newest token" : both ? "Whole context, cold cache" : "Multiplications for the whole context";
-    $("tile2").style.display = both ? "" : "none";
-    $("c-total2").textContent = show(warmMult(n));
-    $("chart-title").textContent = "Multiplications and input bill";
+    $("mult-note").textContent = "Counting " + fmt.format(state.heads) + (state.heads === 1 ? " head × " : " heads × ") +
+      fmt.format(state.layers) + (state.layers === 1 ? " layer" : " layers");
     $("leg-warm").style.display = both ? "" : "none";
     renderBills();
-    $("chart-hint").textContent = "Areas use the left axis, lines the right axis. " +
-      (state.mode === "none" ? "Both cases are switched off; turn on the cold or the warm cache above to draw them. "
-        : both ? "The yellow area and the dashed lines are the warm cache; the rest is the cold cache. "
-        : warm ? "Warm cache: earlier tokens are reused, so only the newest token's share is computed and the earlier ones are billed as cache reads. "
-        : "Cold cache: everything is computed from the first token and every token is billed as new input. ") +
-      "The axes zoom out when the context outgrows them. Click the chart to jump to a context length.";
 
-    chartTo(levelFor(n));
-    renderMsg();
+    chartTo(n);
   }
 
   function cancelAnim() { state.run++; state.anim = null; }
@@ -1209,10 +1025,21 @@ tr:last-child td { border-bottom: 0; }
     state.layers = Math.max(1, Math.min(256, isNaN(l) ? 1 : l));
     stopAll(); render();
   }
+  /* matrix sizes: one of SIZES; the to-scale figure is redrawn at once because its blocks depend on them */
+  function setSize(id) {
+    var s = SIZES[id] || SIZES.gpt2;
+    DM = s.dm; DH = s.dh;
+    $("set-size").value = SIZES[id] ? id : "gpt2";
+    sizeLabels(s.lede);
+    cancelAnimationFrame(disp.raf); disp.n = state.n; disp.target = state.n; drawScale(state.n);
+  }
   function preset(h, l) { $("set-heads").value = h; $("set-layers").value = l; readSettings(); }
+  function model(id) { setSize(id); preset(SIZES[id].heads, SIZES[id].layers); }
+  $("set-size").addEventListener("change", function () { setSize($("set-size").value); stopAll(); render(); });
   $("set-heads").addEventListener("input", readSettings);
   $("set-layers").addEventListener("input", readSettings);
-  $("set-gpt2").addEventListener("click", function () { preset(12, 12); });
+  $("set-gpt2").addEventListener("click", function () { model("gpt2"); });
+  $("set-opus").addEventListener("click", function () { model("opus"); });
   $("set-one").addEventListener("click", function () { preset(1, 1); });
   /* the two buttons toggle independently; both may be off */
   function toggleMode(which) {
