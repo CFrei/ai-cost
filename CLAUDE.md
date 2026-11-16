@@ -34,7 +34,7 @@ Since 16 November 2026 the talk has three pages, linked by a navigation bar at t
 
 ## Controls
 
-- Existing context length slider (`state.n`): steps through `STOPS`. It is the context before the new message; the left figure draws these n tokens.
+- Existing context length slider (`state.n`): steps through `STOPS`. Under the token count the readout says about how many pages of text that is (`pagesOf`, 650 tokens a page, the same figure as `PAGE` in `scenarios.js`). It is the context before the new message; the left figure draws these n tokens.
 - Close-up / To scale toggle. Past 12 tokens the page switches to To scale by itself.
 - Cold cache and warm cache: two independent toggles, both may be off (`state.mode` is `cold`, `warm`, `both` or `none`).
 - Two sliders above the chart: the new message in input tokens (`state.msg`, default 1, steps in `MSG_STOPS`) and the output in tokens (`state.out`, default 0, steps in `OUT_STOPS`), both up to 100,000.

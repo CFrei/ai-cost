@@ -149,6 +149,7 @@ h1 {
 }
 .n-out { font-size: 22px; font-weight: 300; font-variant-numeric: tabular-nums; min-width: 9.6em; }
 .n-out b { font-weight: 700; }
+.n-out .pages { display: block; font-size: 14px; font-weight: 400; color: var(--ink-2); line-height: 1.2; }
 .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 button {
   font: inherit;
@@ -384,7 +385,7 @@ tr:last-child td { border-bottom: 0; }
   <section class="controls" aria-label="Controls">
     <label for="ctx-length"><span class="swatch sw-part ctx"></span>Existing context length</label>
     <input type="range" id="ctx-length" min="0" max="44" step="1" value="5">
-    <output class="n-out" id="ctx-out" for="ctx-length"><b>6</b> tokens</output>
+    <output class="n-out" id="ctx-out" for="ctx-length"><b>6</b> tokens<span class="pages">less than a tenth of a page</span></output>
     <details class="settings" id="settings">
       <summary>Settings</summary>
       <div class="settings-panel">
@@ -716,6 +717,15 @@ tr:last-child td { border-bottom: 0; }
     return "$" + ((t.split(".")[1] || "").length < 2 ? parseFloat(t).toFixed(2) : t);
   }
   var warmMult = function (n) { return multW(n, "warm") + multS(n, "warm"); };
+
+  /* How much text n tokens are: a page of about 500 words is PAGE tokens (the same figure as in scenarios.js). */
+  var PAGE = 650;
+  function pagesOf(n) {
+    var p = n / PAGE;
+    if (p < 0.095) return "less than a tenth of a page";
+    if (p < 9.95) { var t = p.toFixed(1); return "about " + t + (t === "1.0" ? " page" : " pages") + " of text"; }
+    return "about " + fmt.format(Math.round(p)) + " pages of text";
+  }
 
   /* ---------- the same multiplications on one gaming graphics card ---------- */
   /* An estimate of the best case, checked on 16 November 2026. An Nvidia GeForce RTX 5090 is rated
@@ -1064,7 +1074,8 @@ tr:last-child td { border-bottom: 0; }
     $("mode-warm").setAttribute("aria-pressed", warmOn());
 
     slider.value = nearestStop(n);
-    $("ctx-out").innerHTML = "<b>" + fmt.format(n) + "</b> " + (n === 1 ? "token" : "tokens");
+    $("ctx-out").innerHTML = "<b>" + fmt.format(n) + "</b> " + (n === 1 ? "token" : "tokens") +
+      "<span class=\"pages\">" + pagesOf(n) + "</span>";
     $("mult-note").textContent = "Counting " + fmt.format(state.heads) + (state.heads === 1 ? " head × " : " heads × ") +
       fmt.format(state.layers) + (state.layers === 1 ? " layer" : " layers");
     $("leg-warm").style.display = both ? "" : "none";
