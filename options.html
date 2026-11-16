@@ -25,7 +25,7 @@
 
   <ol class="terms">
     <li><a href="#context">Carry less</a><span>Fewer tokens of context in each request</span></li>
-    <li><a href="#rate">Pay a lower rate</a><span>The same tokens from the cache, on a smaller model, or later</span></li>
+    <li><a href="#rate">Pay a lower rate</a><span>The same tokens from the cache, or on a smaller model</span></li>
     <li><a href="#requests">Send fewer requests</a><span>Above all the ones an agent sends by itself</span></li>
     <li><a href="#output">Ask for less output</a><span>The most expensive tokens on the bill</span></li>
   </ol>
@@ -73,10 +73,10 @@
         <p class="consider"><b>Consider</b>A model that fails, or needs three attempts, was not cheaper, and checking its answer takes your time. Some models charge more for long prompts: Haiku 5.5 bills five times its rate for a request of more than 100,000 tokens, which is included in its bar here.</p>
       </article>
       <article class="opt">
-        <h3>Let it wait</h3>
-        <p>Work that nobody is waiting for can be sent as a batch. The provider answers within 24 hours and charges half.</p>
-        <div class="ex" data-ex="batch"></div>
-        <p class="consider"><b>Consider</b>Batches exist on the API, not in a chat app. There is no back-and-forth, so each request has to be complete in itself.</p>
+        <h3>Switch models between tasks, not in the middle of one</h3>
+        <p>Each model has its own cache. After a switch, the new model has to read the whole conversation at its full rate, even if the old model had all of it cached. In a long thread that one message can cost more than the cheaper model saves.</p>
+        <div class="ex" data-ex="switch"></div>
+        <p class="consider"><b>Consider</b>Switching pays when much work is still ahead: the full-rate reading happens once, and every later message is at the new model's prices. For a new task, start a new conversation on the model that fits it; then there is nothing to read again.</p>
       </article>
     </div>
   </section>
@@ -103,9 +103,10 @@
         <p class="consider"><b>Consider</b>An explanation you have to ask about twice costs more than one that was complete the first time.</p>
       </article>
       <article class="opt">
-        <h3>Keep deep reasoning for hard problems</h3>
-        <p>Current models reason before they answer, and that reasoning is billed as output even when you are not shown it. Most tools let you set how much: a thinking switch or an effort level.</p>
-        <p class="consider"><b>Consider</b>A wrong answer to a hard question costs more than the reasoning that would have prevented it. Turn it down for routine work, not for everything.</p>
+        <h3>Set the reasoning effort to fit the task</h3>
+        <p>Current models reason before they answer. That reasoning is billed as output, at the output rate, even when you are shown only a summary of it or nothing. How much they reason is a setting: an effort level from low to max on Claude, or a thinking switch in a chat app. A higher level also makes an agent take more steps.</p>
+        <div class="ex" data-ex="effort"></div>
+        <p class="consider"><b>Consider</b>The amounts above are examples; how much a model reasons at each level depends on the model and on the question. The default differs between models, so check it instead of assuming. A wrong answer to a hard question costs more than the reasoning that would have prevented it: lower the effort for routine work, not for everything.</p>
       </article>
     </div>
   </section>
@@ -150,17 +151,22 @@
     model: ["fable", "opus", "sonnet", "haiku"].map(function (id) {
       return ["The bug investigation on " + M[id].name, A.agent(), id];
     }),
-    batch: [
-      ["One question about 200 pages, answered now", A.doc()],
-      ["The same question in a batch", A.doc(), "sonnet", true]
-    ],
+    switch: ["sonnet", "haiku", "opus"].map(function (id) {
+      /* one more message in a thread that Sonnet has in its cache: only that message is billed here */
+      var next = A.requests([{ add: 140000, out: 0 }, { add: 150, out: 500, warm: id === "sonnet" }])[1];
+      return [(id === "sonnet" ? "One more message in a thread of 140,000 tokens, staying on " : "Switching to ") + M[id].name, [next], id];
+    }),
+    effort: [0, 2000, 10000].map(function (think) {
+      return [think ? "With " + A.tokens(think) + " tokens of reasoning" : "A question of 150 tokens and an answer of 500, no reasoning",
+              A.requests([{ add: 150, out: 500 + think }])];
+    }),
     steps: [
       ["The bug investigation in 40 steps", A.agent()],
       ["In 15 steps", A.agent({ steps: 15 })]
     ],
     short: [
-      ["50 messages in a day, answers of 500 tokens", A.chat({ n: 50, warm: true })],
-      ["Answers of 250 tokens", A.chat({ n: 50, warm: true, answer: 250 })]
+      ["50 messages in a day, answers of 500 tokens on average", A.chat({ n: 50, warm: true, vary: 11 })],
+      ["Answers of 250 tokens on average", A.chat({ n: 50, warm: true, vary: 11, answer: 250 })]
     ]
   };
   var PARTS = [["read", "read from the cache"], ["write", "new input"], ["out", "output"]];

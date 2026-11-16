@@ -24,13 +24,13 @@
      request already sent is read from the cache; the rest (the previous answer and the new input)
      is written to it. With a cold cache all of it is written.
      Returns one object per request: t (position in time, 0 to 1), by ("you" or "agent"),
-     input, read, write and out, all in tokens. */
+     and in tokens: add (the new input of this turn), input, read, write and out. */
   function requests(turns) {
     var ctx = 0, cached = 0;
     return turns.map(function (u) {
       var input = ctx + u.add;
       var read = u.warm ? cached : 0;
-      var r = { t: u.t, by: u.by || "you", input: input, read: read, write: input - read, out: u.out };
+      var r = { t: u.t, by: u.by || "you", add: u.add, input: input, read: read, write: input - read, out: u.out };
       cached = input;
       ctx = input + u.out;
       return r;
@@ -62,19 +62,37 @@
 
   /* A conversation of n messages. Each message is `user` tokens and each answer `answer` tokens.
      `first` is extra material sent with the first message, for example a document.
-     `warm`: every message after the first finds the cache alive. `times`: positions 0 to 1. */
+     `warm`: every message after the first finds the cache alive. `times`: positions 0 to 1.
+     `vary`: a seed. With it the messages and answers differ in length, between about 0.3 and
+     2.3 times the given size, and `user` and `answer` are their averages. The same seed always
+     gives the same lengths. */
   function chat(o) {
     var user = o.user === undefined ? 150 : o.user, answer = o.answer === undefined ? 500 : o.answer;
+    var fu = factors(o.n, o.vary), fa = factors(o.n, o.vary && o.vary + 1);
     var turns = [];
     for (var i = 0; i < o.n; i++) {
       turns.push({
         t: o.times ? o.times[i] : (i + 0.5) / o.n,
-        add: user + (i === 0 ? (o.first || 0) : 0),
-        out: answer,
+        add: Math.round(user * fu[i]) + (i === 0 ? (o.first || 0) : 0),
+        out: Math.round(answer * fa[i]),
         warm: !!o.warm && i > 0
       });
     }
     return requests(turns);
+  }
+  /* n factors with an average of exactly 1: mostly below 1, a few well above, as message lengths are */
+  function factors(n, seed) {
+    var f = [], sum = 0, i;
+    for (i = 0; i < n; i++) {
+      if (!seed) { f.push(1); sum += 1; continue; }
+      seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      var u = ((t ^ t >>> 14) >>> 0) / 4294967296;
+      f.push(0.3 + 2 * u * u);
+      sum += f[i];
+    }
+    return f.map(function (v) { return v * n / sum; });
   }
 
   /* One prompt to an agent. It starts with `base` tokens of instructions and tool descriptions plus
@@ -105,8 +123,8 @@
      The numbers of messages are chosen so that the bills rise from A to D. */
   var SCENARIOS = {
     doc:   function () { return doc(); },
-    day:   function () { return chat({ n: 50, warm: true }); },
-    month: function () { return chat({ n: MONTH.length, warm: false, times: monthTimes() }); },
+    day:   function () { return chat({ n: 50, warm: true, vary: 11 }); },
+    month: function () { return chat({ n: MONTH.length, warm: false, times: monthTimes(), vary: 23 }); },
     agent: function () { return agent(); }
   };
 

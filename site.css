@@ -168,10 +168,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--q); outline-off
 .fig-text { fill: var(--ink-2); font-family: var(--font); font-size: 12.5px; }
 .fig-you { fill: var(--ink); }
 .fig-span { stroke: var(--ink-3); stroke-width: 1; fill: none; }
-.seg { fill: var(--ink-3); transition: fill 0.35s; }
-.revealed .seg.read { fill: var(--c-read); }
-.revealed .seg.write { fill: var(--c-write); }
-.revealed .seg.out { fill: var(--c-out); }
+.seg.read { fill: var(--c-read); }
+.seg.write, .now.write { fill: var(--c-write); }
+.seg.out, .now.out { fill: var(--c-out); }
 .bill { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 4px 12px; align-items: center; margin-top: 2px; }
 .bill .amt { font-size: 26px; font-weight: 300; line-height: 1.2; }
 .bill .split, .bill .why { grid-column: 1 / -1; }
@@ -216,7 +215,4 @@ body:not(.revealed) .key.only-shut { display: inline-flex; }
   .wrap { padding: 16px 16px 32px; }
   .ex { grid-template-columns: minmax(0, 1fr) max-content; }
   .ex .lab { grid-column: 1 / -1; margin-bottom: -4px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .seg { transition: none; }
 }

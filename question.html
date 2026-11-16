@@ -20,15 +20,15 @@
 
   <header>
     <h1>What is more expensive?</h1>
-    <p class="lede">Four ways of using a language model, each drawn as the requests it sends. Decide which one costs most, then show the bills.</p>
+    <p class="lede">Four ways of using a language model, each drawn as what you send and what you get back. Decide which one costs most, then show the bills.</p>
   </header>
 
   <section class="bar-row" aria-label="Key">
-    <span class="key"><span class="sw req"></span>One request, as tall as the text the model reads for it</span>
     <span class="key"><span class="sw dot"></span>A message you type</span>
+    <span class="key"><span class="sw write"></span>New input</span>
+    <span class="key"><span class="sw out"></span>Output</span>
     <span class="key only-open"><span class="sw read"></span>Read from the cache</span>
-    <span class="key only-open"><span class="sw write"></span>New input</span>
-    <span class="key only-open"><span class="sw out"></span>Output</span>
+    <span class="key only-open">One bar per request, as tall as all the text the model reads for it</span>
     <button type="button" class="primary push" id="reveal" aria-pressed="false">Show the bills</button>
   </section>
 
@@ -104,28 +104,54 @@
   });
   var top = Math.max.apply(null, ORDER.map(function (id) { return data[id].bill.total; }));
 
-  /* ---------- the figure: one bar per request, all four cards on the same scale ---------- */
-  /* The bars are 6 units wide in every card, so their area is the number of tokens read.
-     The vertical axis has two marks, 0 and YMAX, written in the gutter left of the plot. */
+  /* ---------- the figure ---------- */
+  /* Each card has two drawings on the same time axis. Before the bills are shown (group .only-shut):
+     what you see when you use the model, per message the new input you send and beside it the
+     output you get back. Its vertical scale is the card's own, because a message of 150 tokens
+     and a document of 130,000 cannot share one. After (group .only-open): one bar per request,
+     as tall as all the text the model reads for it, on the same scale and with the same bar
+     width in all four cards, so that bar area is tokens read.
+     The vertical axis has two marks, 0 and the top, written in the gutter left of the plot. */
   var L = 58, R = 552, TOP = 14, BASE = 146, YMAX = 150000, BW = 6;
   var xOf = function (t) { return L + 10 + t * (R - L - 20); };
-  var hOf = function (tok) { return tok * (BASE - TOP) / YMAX; };
   function label(svg, x, anchor, text) {
     return el("text", { "class": "fig-text", x: x, y: BASE + 32, "text-anchor": anchor }, svg, text);
   }
+  function axis(g, ymax) {
+    el("line", { "class": "fig-grid", x1: L, x2: R, y1: TOP, y2: TOP }, g);
+    el("text", { "class": "fig-text", x: L - 8, y: TOP + 4, "text-anchor": "end" }, g, A.tokens(ymax));
+    el("text", { "class": "fig-text", x: L - 8, y: TOP + 18, "text-anchor": "end" }, g, "tokens");
+    el("text", { "class": "fig-text", x: L - 8, y: BASE + 4, "text-anchor": "end" }, g, "0");
+  }
+  /* what you send and what you get back, per message; for the agent only your prompt and its final answer */
+  function seen(id) {
+    var reqs = data[id].reqs;
+    if (id === "agent") return [{ t: 0, add: 200, out: reqs[reqs.length - 1].out }];
+    return reqs.map(function (r) { return { t: r.t, add: r.add, out: r.out }; });
+  }
   function draw(id, svg) {
     var reqs = data[id].reqs;
-    el("line", { "class": "fig-grid", x1: L, x2: R, y1: TOP, y2: TOP }, svg);
-    el("text", { "class": "fig-text", x: L - 8, y: TOP + 4, "text-anchor": "end" }, svg, A.tokens(YMAX));
-    el("text", { "class": "fig-text", x: L - 8, y: TOP + 18, "text-anchor": "end" }, svg, "tokens");
-    el("text", { "class": "fig-text", x: L - 8, y: BASE + 4, "text-anchor": "end" }, svg, "0");
+    var shut = el("g", { "class": "only-shut" }, svg), open = el("g", { "class": "only-open" }, svg);
+
+    /* before: new input and output side by side; anything above zero is at least 1.5 units tall */
+    var list = seen(id), ymax = id === "doc" ? YMAX : 1500, w = 3.5;
+    axis(shut, ymax);
+    list.forEach(function (r) {
+      [["write", r.add, -w - 0.25], ["out", r.out, 0.25]].forEach(function (p) {
+        var h = Math.max(1.5, p[1] * (BASE - TOP) / ymax);
+        el("rect", { "class": "now " + p[0], x: (xOf(r.t) + p[2]).toFixed(2), y: (BASE - h).toFixed(2), width: w, height: h.toFixed(2) }, shut);
+      });
+    });
+
+    /* after: one stacked bar per request */
+    axis(open, YMAX);
     reqs.forEach(function (r) {
       var x = xOf(r.t) - BW / 2, y = BASE;
       [["read", r.read], ["write", r.write], ["out", r.out]].forEach(function (p) {
-        var h = hOf(p[1]);
+        var h = p[1] * (BASE - TOP) / YMAX;
         if (h <= 0) return;
         y -= h;
-        el("rect", { "class": "seg " + p[0] + (r.by === "agent" ? " only-open" : ""), x: x.toFixed(2), y: y.toFixed(2), width: BW, height: h.toFixed(2) }, svg);
+        el("rect", { "class": "seg " + p[0], x: x.toFixed(2), y: y.toFixed(2), width: BW, height: h.toFixed(2) }, open);
       });
       if (r.by === "you") el("circle", { "class": "fig-you", cx: xOf(r.t).toFixed(2), cy: BASE + 10, r: 3 }, svg);
     });
@@ -140,16 +166,18 @@
       });
     }
     if (id === "agent") {
+      /* what the agent does by itself is part of the answer, so it is drawn only after the bills are shown */
       var a = xOf(reqs[1].t) - BW / 2, b = xOf(1) + BW / 2, y0 = BASE + 10;
-      el("path", { "class": "fig-span only-open", d: "M" + a + " " + (y0 - 4) + " v4 H" + b + " v-4" }, svg);
+      el("path", { "class": "fig-span", d: "M" + a + " " + (y0 - 4) + " v4 H" + b + " v-4" }, open);
       label(svg, L, "start", "your prompt");
-      /* what the agent does by itself is part of the answer, so it is hidden until the bills are shown */
-      label(svg, (a + b) / 2, "middle", "then " + (reqs.length - 1) + " requests the agent sends by itself").classList.add("only-open");
-      label(svg, R, "end", "ten minutes later").classList.add("only-open");
+      label(open, (a + b) / 2, "middle", "then " + (reqs.length - 1) + " requests the agent sends by itself");
+      label(open, R, "end", "ten minutes later");
     }
-    svg.setAttribute("aria-label", id === "agent" ? "One prompt. What follows is drawn when the bills are shown." : reqs.length === 1
-      ? "One request of " + A.tokens(A.round2(data[id].max)) + " tokens."
-      : reqs.length + " requests. The text read for one request grows to " + A.tokens(A.round2(data[id].max)) + " tokens.");
+    svg.setAttribute("aria-label", list.length === 1
+      ? "One message of " + A.tokens(A.round2(list[0].add)) + " tokens and an answer of " + A.tokens(list[0].out) +
+        " tokens. The requests behind it are drawn when the bills are shown."
+      : list.length + " messages of about 150 tokens, each with an answer of about 500 tokens. " +
+        "The requests behind them are drawn when the bills are shown.");
   }
 
   /* ---------- the bill and the sentence under it ---------- */
@@ -197,12 +225,14 @@
   document.querySelectorAll(".card").forEach(function (card) {
     var id = card.getAttribute("data-id"), d = data[id], n = d.reqs.length;
     draw(id, card.querySelector("svg"));
-    card.querySelector(".facts").innerHTML = id === "agent"
-      ? "<span class=\"only-shut\"><b>1</b> prompt of <b>200</b> tokens</span>" +
-        "<span class=\"only-open\"><b>" + n + "</b> requests, the last one of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens</span>"
-      : n === 1
+    var first = id === "agent" ? { add: 200, out: d.reqs[n - 1].out } : d.reqs[0];
+    var before = id === "day" || id === "month"
+      ? "<b>" + n + "</b> messages of about <b>150</b> tokens, each answered in about <b>500</b>"
+      : "<b>1</b> message of <b>" + A.tokens(A.round2(first.add)) + "</b> tokens, answered in <b>" + first.out + "</b>";
+    var after = n === 1
       ? "<b>1</b> request of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens"
       : "<b>" + n + "</b> requests, the last one of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens";
+    card.querySelector(".facts").innerHTML = "<span class=\"only-shut\">" + before + "</span><span class=\"only-open\">" + after + "</span>";
     fillBill(id, card.querySelector(".bill"));
   });
 
@@ -214,7 +244,7 @@
   document.getElementById("assume").textContent =
     "Assumptions. Prices of Claude " + m.name + " on 16 November 2026, per million tokens: $" + m.write.toFixed(2) +
     " for new input, $" + m.read.toFixed(2) + " for input read from the cache, $" + m.out.toFixed(2) + " for output. " +
-    "One page is " + A.PAGE + " tokens. A chat message is 150 tokens and its answer 500. The agent starts with 10,000 tokens of " +
+    "One page is " + A.PAGE + " tokens. A chat message is 150 tokens on average and its answer 500. The agent starts with 10,000 tokens of " +
     "instructions and tool descriptions; each of its 40 steps brings back 3,000 tokens of files, logs or test output. " +
     "In B no message finds the cache expired; in C every message does.";
 
