@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is more expensive?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="site-nav" aria-label="Pages">
+    <a href="question.html" aria-current="page"><span class="num">1</span>What is more expensive?</a>
+    <a href="index.html"><span class="num">2</span>Why a longer context costs more</a>
+    <a href="options.html"><span class="num">3</span>How to spend less</a>
+  </nav>
+
+  <header>
+    <h1>What is more expensive?</h1>
+    <p class="lede">Four ways of using a language model, each drawn as the requests it sends. Decide which one costs most, then show the bills.</p>
+  </header>
+
+  <section class="bar-row" aria-label="Key">
+    <span class="key"><span class="sw req"></span>One request, as tall as the text the model reads for it</span>
+    <span class="key"><span class="sw dot"></span>A message you type</span>
+    <span class="key only-open"><span class="sw read"></span>Read from the cache</span>
+    <span class="key only-open"><span class="sw write"></span>New input</span>
+    <span class="key only-open"><span class="sw out"></span>Output</span>
+    <button type="button" class="primary push" id="reveal" aria-pressed="false">Show the bills</button>
+  </section>
+
+  <main class="cards">
+    <article class="card" data-id="doc">
+      <h2><span class="tag">A</span>One question about a long document</h2>
+      <p class="say">“Read this 200-page report and tell me in which year the pilot study started.”</p>
+      <svg viewBox="0 0 560 186" role="img"></svg>
+      <p class="facts"></p>
+      <div class="bill only-open"></div>
+    </article>
+
+    <article class="card" data-id="day">
+      <h2><span class="tag">B</span>A conversation during one day</h2>
+      <p class="say">50 short messages between morning and evening, each answered in a paragraph or two.</p>
+      <svg viewBox="0 0 560 186" role="img"></svg>
+      <p class="facts"></p>
+      <div class="bill only-open"></div>
+    </article>
+
+    <article class="card" data-id="month">
+      <h2><span class="tag">C</span>A conversation over a month</h2>
+      <p class="say">The same kind of messages and answers, but only 25 of them, spread over 30 days.</p>
+      <svg viewBox="0 0 560 186" role="img"></svg>
+      <p class="facts"></p>
+      <div class="bill only-open"></div>
+    </article>
+
+    <article class="card" data-id="agent">
+      <h2><span class="tag">D</span>One prompt to investigate a bug</h2>
+      <p class="say">“The login test has been failing since yesterday. Find out why.”</p>
+      <svg viewBox="0 0 560 186" role="img"></svg>
+      <p class="facts"></p>
+      <div class="bill only-open"></div>
+    </article>
+  </main>
+
+  <section class="answer only-open" aria-label="The answer" aria-live="polite">
+    <p class="order" id="order"></p>
+    <p>The bill does not follow the number of messages you type. It follows how many requests are sent, how much text each one carries, and whether that text is still in the cache.</p>
+    <p>The answers are too short to see in the bars above, a few hundred tokens in each request, but an output token costs <span id="out-ratio"></span> times as much as an input token.</p>
+  </section>
+
+  <p class="fine" id="assume"></p>
+
+  <footer class="next">
+    <span></span>
+    <a href="index.html">Next: why a longer context costs more →</a>
+  </footer>
+
+</div>
+
+<script src="scenarios.js"></script>
+<script>
+(function () {
+  "use strict";
+  var A = window.AICost, NS = "http://www.w3.org/2000/svg";
+  var MODEL = "sonnet", m = A.MODELS[MODEL];
+  var ORDER = ["doc", "day", "month", "agent"], TAG = { doc: "A", day: "B", month: "C", agent: "D" };
+  function el(name, attrs, parent, text) {
+    var node = document.createElementNS(NS, name);
+    for (var k in attrs) node.setAttribute(k, attrs[k]);
+    if (text !== undefined) node.textContent = text;
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  function sum(reqs, key) { return reqs.reduce(function (s, r) { return s + r[key]; }, 0); }
+
+  var data = {};
+  ORDER.forEach(function (id) {
+    var reqs = A.SCENARIOS[id]();
+    data[id] = { reqs: reqs, bill: A.bill(reqs, MODEL), max: Math.max.apply(null, reqs.map(function (r) { return r.input; })) };
+  });
+  var top = Math.max.apply(null, ORDER.map(function (id) { return data[id].bill.total; }));
+
+  /* ---------- the figure: one bar per request, all four cards on the same scale ---------- */
+  /* The bars are 6 units wide in every card, so their area is the number of tokens read.
+     The vertical axis has two marks, 0 and YMAX, written in the gutter left of the plot. */
+  var L = 58, R = 552, TOP = 14, BASE = 146, YMAX = 150000, BW = 6;
+  var xOf = function (t) { return L + 10 + t * (R - L - 20); };
+  var hOf = function (tok) { return tok * (BASE - TOP) / YMAX; };
+  function label(svg, x, anchor, text) {
+    return el("text", { "class": "fig-text", x: x, y: BASE + 32, "text-anchor": anchor }, svg, text);
+  }
+  function draw(id, svg) {
+    var reqs = data[id].reqs;
+    el("line", { "class": "fig-grid", x1: L, x2: R, y1: TOP, y2: TOP }, svg);
+    el("text", { "class": "fig-text", x: L - 8, y: TOP + 4, "text-anchor": "end" }, svg, A.tokens(YMAX));
+    el("text", { "class": "fig-text", x: L - 8, y: TOP + 18, "text-anchor": "end" }, svg, "tokens");
+    el("text", { "class": "fig-text", x: L - 8, y: BASE + 4, "text-anchor": "end" }, svg, "0");
+    reqs.forEach(function (r) {
+      var x = xOf(r.t) - BW / 2, y = BASE;
+      [["read", r.read], ["write", r.write], ["out", r.out]].forEach(function (p) {
+        var h = hOf(p[1]);
+        if (h <= 0) return;
+        y -= h;
+        el("rect", { "class": "seg " + p[0], x: x.toFixed(2), y: y.toFixed(2), width: BW, height: h.toFixed(2) }, svg);
+      });
+      if (r.by === "you") el("circle", { "class": "fig-you", cx: xOf(r.t).toFixed(2), cy: BASE + 10, r: 3 }, svg);
+    });
+    el("line", { "class": "fig-base", x1: L, x2: R, y1: BASE, y2: BASE }, svg);
+    if (id === "doc") label(svg, xOf(0.5), "middle", "one request");
+    if (id === "day") { label(svg, L, "start", "morning"); label(svg, R, "end", "evening"); }
+    if (id === "month") {
+      [1, 10, 20, 30].forEach(function (d) {
+        var x = xOf((d - 0.5) / 30);
+        label(svg, x, "middle", "day " + d);
+        el("line", { "class": "fig-base", x1: x, x2: x, y1: BASE + 16, y2: BASE + 20 }, svg);
+      });
+    }
+    if (id === "agent") {
+      var a = xOf(reqs[1].t) - BW / 2, b = xOf(1) + BW / 2, y0 = BASE + 10;
+      el("path", { "class": "fig-span", d: "M" + a + " " + (y0 - 4) + " v4 H" + b + " v-4" }, svg);
+      label(svg, L, "start", "your prompt");
+      label(svg, (a + b) / 2, "middle", "then " + (reqs.length - 1) + " requests the agent sends by itself");
+      label(svg, R, "end", "ten minutes later");
+    }
+    svg.setAttribute("aria-label", reqs.length === 1
+      ? "One request of " + A.tokens(A.round2(data[id].max)) + " tokens."
+      : reqs.length + " requests. The text read for one request grows to " + A.tokens(A.round2(data[id].max)) + " tokens.");
+  }
+
+  /* ---------- the bill and the sentence under it ---------- */
+  var WHY = {
+    doc: function (d) {
+      return "One request, and none of it has been seen before: all " + A.tokens(A.round2(d.max)) +
+        " tokens are billed at the full input rate.";
+    },
+    day: function (d) {
+      return "Every message sends the whole conversation again. We assume that no pause is long enough for the cache to expire, " +
+        "so the earlier part is billed at " + Math.round(100 * m.read / m.write) + "% of the full rate. The answers are " +
+        Math.round(100 * d.bill.out / d.bill.total) + "% of the bill.";
+    },
+    month: function (d) {
+      var nB = data.day.reqs.length, per = d.bill.total / d.reqs.length, perB = data.day.bill.total / nB;
+      return "Hours or days pass between two messages, so each one finds the cache expired and pays the full rate for the whole " +
+        "conversation so far. There are " + d.reqs.length + " messages against " + nB + " in B, but one message costs " +
+        (per / perB).toFixed(1) + " times as much.";
+    },
+    agent: function (d) {
+      return "You type one prompt and the agent sends " + d.reqs.length + " requests. Every file it opens and every test it runs " +
+        "is another request, and each one carries everything gathered so far. Added up, the model reads " +
+        (sum(d.reqs, "input") / 1e6).toFixed(1) + " million tokens.";
+    }
+  };
+  var PARTS = [["read", "read from the cache"], ["write", "new input"], ["out", "output"]];
+  function fillBill(id, box) {
+    var d = data[id], b = d.bill;
+    var amt = document.createElement("span"); amt.className = "amt"; amt.textContent = A.dollars(b.total);
+    var stack = document.createElement("span"); stack.className = "stack";
+    PARTS.forEach(function (p) {
+      if (!b[p[0]]) return;
+      var seg = document.createElement("i"); seg.className = p[0];
+      seg.style.width = (100 * b[p[0]] / top).toFixed(2) + "%";
+      seg.title = p[1].charAt(0).toUpperCase() + p[1].slice(1) + ": " + A.dollars(b[p[0]]);
+      stack.appendChild(seg);
+    });
+    var split = document.createElement("p"); split.className = "split";
+    split.textContent = PARTS.filter(function (p) { return b[p[0]]; })
+      .map(function (p) { return A.dollars(b[p[0]]) + " " + p[1]; }).join(" · ");
+    var why = document.createElement("p"); why.className = "why"; why.textContent = WHY[id](d);
+    box.appendChild(amt); box.appendChild(stack); box.appendChild(split); box.appendChild(why);
+  }
+
+  document.querySelectorAll(".card").forEach(function (card) {
+    var id = card.getAttribute("data-id"), d = data[id], n = d.reqs.length;
+    draw(id, card.querySelector("svg"));
+    card.querySelector(".facts").innerHTML = n === 1
+      ? "<b>1</b> request of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens"
+      : "<b>" + n + "</b> requests, the last one of <b>" + A.tokens(A.round2(d.max)) + "</b> tokens";
+    fillBill(id, card.querySelector(".bill"));
+  });
+
+  var ranked = ORDER.slice().sort(function (a, b) { return data[b].bill.total - data[a].bill.total; });
+  document.getElementById("order").innerHTML = ranked.map(function (id) {
+    return "<span style=\"white-space: nowrap\"><b>" + TAG[id] + "</b> " + A.dollars(data[id].bill.total) + "</span>";
+  }).join(" &nbsp;›&nbsp; ");
+  document.getElementById("out-ratio").textContent = String(m.out / m.write);
+  document.getElementById("assume").textContent =
+    "Assumptions. Prices of Claude " + m.name + " on 16 November 2026, per million tokens: $" + m.write.toFixed(2) +
+    " for new input, $" + m.read.toFixed(2) + " for input read from the cache, $" + m.out.toFixed(2) + " for output. " +
+    "One page is " + A.PAGE + " tokens. A chat message is 150 tokens and its answer 500. The agent starts with 10,000 tokens of " +
+    "instructions and tool descriptions; each of its 40 steps brings back 3,000 tokens of files, logs or test output. " +
+    "In B no message finds the cache expired; in C every message does.";
+
+  /* ---------- show and hide the bills ---------- */
+  var btn = document.getElementById("reveal");
+  btn.addEventListener("click", function () {
+    var on = !document.body.classList.contains("revealed");
+    document.body.classList.toggle("revealed", on);
+    btn.setAttribute("aria-pressed", on);
+    btn.textContent = on ? "Hide the bills" : "Show the bills";
+  });
+})();
+</script>
+</body>
+</html>

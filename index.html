@@ -109,6 +109,17 @@ body {
   gap: 16px;
 }
 
+/* Navigation between the three pages (the same markup and rules are in site.css) */
+.site-nav { display: flex; flex-wrap: wrap; gap: 0 26px; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.site-nav a {
+  display: inline-flex; align-items: baseline; gap: 7px; padding: 6px 0 8px; margin-bottom: -1px;
+  border-bottom: 2px solid transparent; color: var(--ink-2); text-decoration: none;
+}
+.site-nav a:hover { color: var(--ink); }
+.site-nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--att); }
+.site-nav a:focus-visible { outline: 3px solid var(--q); outline-offset: 2px; }
+.site-nav .num { font-size: 13px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
 header { display: flex; flex-direction: column; gap: 4px; }
 h1 {
   font-weight: 300;
@@ -352,6 +363,12 @@ tr:last-child td { border-bottom: 0; }
 </head>
 <body>
 <div class="wrap">
+
+  <nav class="site-nav" aria-label="Pages">
+    <a href="question.html"><span class="num">1</span>What is more expensive?</a>
+    <a href="index.html" aria-current="page"><span class="num">2</span>Why a longer context costs more</a>
+    <a href="options.html"><span class="num">3</span>How to spend less</a>
+  </nav>
 
   <header>
     <h1>Why does a longer context cost more?</h1>

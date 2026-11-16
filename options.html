@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to spend less</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="site-nav" aria-label="Pages">
+    <a href="question.html"><span class="num">1</span>What is more expensive?</a>
+    <a href="index.html"><span class="num">2</span>Why a longer context costs more</a>
+    <a href="options.html" aria-current="page"><span class="num">3</span>How to spend less</a>
+  </nav>
+
+  <header>
+    <h1>How to spend less</h1>
+    <p class="lede">Every request is billed for the text it carries in and for the text the model writes back, and a conversation is many requests. That leaves four things you can change.</p>
+  </header>
+
+  <ol class="terms">
+    <li><a href="#context">Carry less</a><span>Fewer tokens of context in each request</span></li>
+    <li><a href="#rate">Pay a lower rate</a><span>The same tokens from the cache, on a smaller model, or later</span></li>
+    <li><a href="#requests">Send fewer requests</a><span>Above all the ones an agent sends by itself</span></li>
+    <li><a href="#output">Ask for less output</a><span>The most expensive tokens on the bill</span></li>
+  </ol>
+
+  <section class="bar-row" aria-label="Key">
+    <span>Examples at Claude Sonnet 5.5 prices, with the scenarios of page 1:</span>
+    <span class="key"><span class="sw read"></span>Read from the cache</span>
+    <span class="key"><span class="sw write"></span>New input</span>
+    <span class="key"><span class="sw out"></span>Output</span>
+  </section>
+
+  <main style="display: contents">
+
+  <section class="group" id="context" style="border-top: 0; padding-top: 0">
+    <h2>1 · Carry less into each request</h2>
+    <div class="opts">
+      <article class="opt">
+        <h3>Give the part, not the whole</h3>
+        <p>If the answer is in chapter 3, send chapter 3. Every token you send is billed, whether or not the model needed it.</p>
+        <div class="ex" data-ex="part"></div>
+        <p class="consider"><b>Consider</b>You have to know where to look. The model cannot notice what it was not given: a definition in the introduction, or a contradiction in another chapter.</p>
+      </article>
+      <article class="opt">
+        <h3>Start a new conversation when the subject changes</h3>
+        <p>Each message carries the whole conversation, including the parts that no longer matter. To go on with a long thread the next day, ask for a summary first and start a new conversation from it.</p>
+        <div class="ex" data-ex="fresh"></div>
+        <p class="consider"><b>Consider</b>A summary drops detail, and the model no longer knows what was already tried and ruled out, so put that in. Within one sitting the cache makes a long thread cheap to continue; do not restart in the middle of a task.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="group" id="rate">
+    <h2>2 · Pay a lower rate for the same tokens</h2>
+    <div class="opts">
+      <article class="opt">
+        <h3>Finish in one sitting</h3>
+        <p>Text the model has just read stays in a cache for a few minutes: five at Anthropic, counted from the last use. Sent again within that time, it costs a few percent of the full rate. After a break it is billed in full.</p>
+        <div class="ex" data-ex="sitting"></div>
+        <p class="consider"><b>Consider</b>The cache matches a conversation from its start up to the first difference. Editing an earlier message, switching the model or changing the attached tools discards everything after that point. A chat app sets the cache lifetime for you; on the API a one-hour cache can be requested, at a higher price for filling it.</p>
+      </article>
+      <article class="opt">
+        <h3>Use the smallest model that does the job</h3>
+        <p>The same tokens cost very different amounts. Per token, <span id="ratio-small"></span> and <span id="ratio-big"></span>.</p>
+        <div class="ex" data-ex="model"></div>
+        <p class="consider"><b>Consider</b>A model that fails, or needs three attempts, was not cheaper, and checking its answer takes your time. Some models charge more for long prompts: Haiku 5.5 bills five times its rate for a request of more than 100,000 tokens, which is included in its bar here.</p>
+      </article>
+      <article class="opt">
+        <h3>Let it wait</h3>
+        <p>Work that nobody is waiting for can be sent as a batch. The provider answers within 24 hours and charges half.</p>
+        <div class="ex" data-ex="batch"></div>
+        <p class="consider"><b>Consider</b>Batches exist on the API, not in a chat app. There is no back-and-forth, so each request has to be complete in itself.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="group" id="requests">
+    <h2>3 · Send fewer requests</h2>
+    <div class="opts">
+      <article class="opt">
+        <h3>Tell an agent where to look</h3>
+        <p>An agent's bill grows faster than its number of steps, because every step carries all the earlier ones. Naming the file, the error message and the way to reproduce it saves the steps spent searching.</p>
+        <div class="ex" data-ex="steps"></div>
+        <p class="consider"><b>Consider</b>Narrowing the task takes your time, and sometimes you do not know where the problem is; then the search is what you are paying for. Look at what an agent loads by default: long instructions and many tools are carried in every request.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="group" id="output">
+    <h2>4 · Ask for less output</h2>
+    <div class="opts">
+      <article class="opt">
+        <h3>Ask for the answer, not the essay</h3>
+        <p>An output token costs <span id="out-ratio"></span> times as much as an input token, and in a chat the answers are most of the bill. Say how long the answer should be, and ask for the changed lines instead of the whole text rewritten.</p>
+        <div class="ex" data-ex="short"></div>
+        <p class="consider"><b>Consider</b>An explanation you have to ask about twice costs more than one that was complete the first time.</p>
+      </article>
+      <article class="opt">
+        <h3>Keep deep reasoning for hard problems</h3>
+        <p>Current models reason before they answer, and that reasoning is billed as output even when you are not shown it. Most tools let you set how much: a thinking switch or an effort level.</p>
+        <p class="consider"><b>Consider</b>A wrong answer to a hard question costs more than the reasoning that would have prevented it. Turn it down for routine work, not for everything.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>Before you optimise</h2>
+    <ul class="closing">
+      <li>Count the cost of a finished task, not of a message. Your own time is usually the largest part of it.</li>
+      <li>A subscription hides the bill but not the mechanics. Its usage limit counts the same work, so long threads, large attachments and larger models use it up faster.</li>
+      <li>Prices and cache rules change. The figures on this page are from 16 November 2026.</li>
+    </ul>
+  </section>
+
+  </main>
+
+  <footer class="next">
+    <a href="index.html">← Back: why a longer context costs more</a>
+    <a href="question.html">The four scenarios</a>
+  </footer>
+
+</div>
+
+<script src="scenarios.js"></script>
+<script>
+(function () {
+  "use strict";
+  var A = window.AICost, M = A.MODELS;
+  /* each example is a list of rows: [label, requests, model, batch] */
+  var EX = {
+    part: [
+      ["One question about 200 pages", A.doc()],
+      ["The same question about 20 pages", A.doc({ pages: 20 })]
+    ],
+    fresh: [
+      ["One more message in a thread of 140,000 tokens, a day later", A.chat({ n: 1, first: 140000 })],
+      ["The same message after a summary of 2,000 tokens", A.chat({ n: 1, first: 2000 })]
+    ],
+    sitting: [
+      ["Five questions about the 200 pages, one a day", A.chat({ n: 5, user: 100, answer: 400, first: 200 * A.PAGE, warm: false })],
+      ["The same five within a few minutes", A.chat({ n: 5, user: 100, answer: 400, first: 200 * A.PAGE, warm: true })]
+    ],
+    model: ["fable", "opus", "sonnet", "haiku"].map(function (id) {
+      return ["The bug investigation on " + M[id].name, A.agent(), id];
+    }),
+    batch: [
+      ["One question about 200 pages, answered now", A.doc()],
+      ["The same question in a batch", A.doc(), "sonnet", true]
+    ],
+    steps: [
+      ["The bug investigation in 40 steps", A.agent()],
+      ["In 15 steps", A.agent({ steps: 15 })]
+    ],
+    short: [
+      ["50 messages in a day, answers of 500 tokens", A.chat({ n: 50, warm: true })],
+      ["Answers of 250 tokens", A.chat({ n: 50, warm: true, answer: 250 })]
+    ]
+  };
+  var PARTS = [["read", "read from the cache"], ["write", "new input"], ["out", "output"]];
+  function add(parent, tag, cls, text) {
+    var node = document.createElement(tag);
+    node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    parent.appendChild(node);
+    return node;
+  }
+  document.querySelectorAll("[data-ex]").forEach(function (box) {
+    var rows = EX[box.getAttribute("data-ex")].map(function (r) { return { label: r[0], bill: A.bill(r[1], r[2], r[3]) }; });
+    var top = Math.max.apply(null, rows.map(function (r) { return r.bill.total; }));
+    box.setAttribute("role", "list");
+    rows.forEach(function (r) {
+      var split = PARTS.filter(function (p) { return r.bill[p[0]]; })
+        .map(function (p) { return A.dollars(r.bill[p[0]]) + " " + p[1]; }).join(", ");
+      add(box, "span", "lab", r.label);
+      var stack = add(box, "span", "stack");
+      stack.title = split;
+      PARTS.forEach(function (p) {
+        if (!r.bill[p[0]]) return;
+        add(stack, "i", p[0]).style.width = (100 * r.bill[p[0]] / top).toFixed(2) + "%";
+      });
+      var amt = add(box, "span", "amt", A.dollars(r.bill.total));
+      amt.setAttribute("aria-label", A.dollars(r.bill.total) + ": " + split);
+    });
+  });
+
+  function times(a, b) {
+    var k = a / b;
+    return k >= 1 ? fmt(k) + " times the price of " : "a " + ordinal(1 / k) + " of the price of ";
+  }
+  function fmt(k) { return String(parseFloat(k.toFixed(1))); }
+  function ordinal(k) {
+    var names = { 2: "half", 4: "quarter", 5: "fifth", 10: "tenth", 20: "twentieth" };
+    return names[Math.round(k)] || fmt(k) + "th";
+  }
+  document.getElementById("ratio-small").textContent = "Haiku 5.5 is " + times(M.haiku.write, M.sonnet.write) + "Sonnet 5.5";
+  document.getElementById("ratio-big").textContent = "Fable 5.2 is " + times(M.fable.write, M.sonnet.write) + "Sonnet 5.5";
+  document.getElementById("out-ratio").textContent = fmt(M.sonnet.out / M.sonnet.write);
+})();
+</script>
+</body>
+</html>

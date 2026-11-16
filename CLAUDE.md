@@ -2,13 +2,28 @@
 
 An interactive teaching page for a 15-minute university seminar talk on cost-efficient use of AI. The audience knows how LLMs work technically (tokens, matrix multiplication) but not how usage is billed. The page shows why compute, and therefore cost, grows with context length.
 
-## The file
+Since 16 November 2026 the talk has three pages, linked by a navigation bar at the top of each: 1 `question.html` (What is more expensive?), 2 `index.html` (the original page, described below), 3 `options.html` (How to spend less).
 
-- `index.html` is the whole page: inline CSS, inline script, no build step. Open it in a browser.
+## The files
+
+- `index.html` is the whole of page 2: inline CSS, inline script, no build step. Open it in a browser. It loads neither `site.css` nor `scenarios.js`.
+- `question.html` and `options.html` share `site.css` (colour tokens, base styles, navigation, and the styles of both pages) and `scenarios.js` (prices and the billing model). Each has a short inline script at the end. They need those two files beside them, so they work from `file://` and from GitHub Pages, but not as a pasted single file.
 - The only outside dependency is the Lato font from Google Fonts.
-- The script is one IIFE at the end of the file (from about line 418), in sections marked by comments.
+- The script of `index.html` is one IIFE at the end of the file (from about line 435), in sections marked by comments.
+- `.claude/launch.json` starts `python -m http.server 8123` for the preview pane. The pane shows a `file://` page as a static snapshot without its CSS and scripts, so use the server.
 
-## What the page shows
+## Pages 1 and 3
+
+- **Kept in two places, change both:** the navigation markup and its CSS (in `index.html` inline and in `site.css`), the colour tokens (same two places), and the prices (`MODELS` in `index.html`, `MODELS` in `scenarios.js`, Anthropic models only).
+- `scenarios.js` exposes `window.AICost`. A conversation is a list of turns; `requests(turns)` turns it into one object per request (`input`, `read`, `write`, `out` in tokens) and `bill(reqs, model, batch)` prices it. Every request sends the whole conversation. With a warm cache the part the previous request already sent is billed at the read rate and the rest (the previous answer and the new input) at the write rate; with a cold cache all input is billed at the write rate. The long-prompt tier is decided per request.
+- The scenario builders are `doc`, `chat` and `agent`; `SCENARIOS` holds the four of page 1. Assumptions: a page is 650 tokens; a chat message 150 tokens and its answer 500; the agent starts with 10,000 tokens and each of its 40 steps is 250 tokens of output and 3,000 tokens of tool result. They are stated at the bottom of page 1, partly as fixed text, so change the text with the numbers.
+- **Page 1** has four cards: A one question about a 200-page document, B 50 messages during one day (assumed warm cache throughout), C 25 messages over a month (cold cache every time), D one prompt to an agent that investigates a bug. Each figure draws one bar per request, as tall as the tokens read for it, with a dot under each request the user typed. All four use the same vertical scale and the same bar width, so bar area is tokens read; the chat bars are therefore small. This is deliberate. The scale is written as two axis marks left of each plot (0 and 150,000 tokens); it was first a line of text above the plot, which read as a title. The bills are hidden until the "Show the bills" button is pressed (class `revealed` on `body`; `.only-open` and `.only-shut` in `site.css`). The numbers of messages in B and C were chosen on request so that the bills rise from A to D: at Sonnet 5.5 prices A $0.33, B $0.41, C $0.62, D $0.75. The order holds for Sonnet and Opus but not for Haiku or Fable, and it breaks if B drops below about 42 messages or C leaves the range of about 20 to 27. The reveal was not asked for; the request was only for the question and a graphic per scenario.
+- **Page 3** lists eight options under four headings (carry less, pay a lower rate, send fewer requests, ask for less output), each with a "Consider" paragraph. Seven have a before-and-after bar example computed from `scenarios.js` (`EX` in the page's script); the bars of one example share a scale, different examples do not.
+- The three bill colours (`--c-read`, `--c-write`, `--c-out`) were checked for colour-blind separation in both themes. They do not reuse the colours of page 2, where blue and purple mean queries and attention.
+- Facts stated on page 3, checked on 16 November 2026: Anthropic's cache lasts five minutes from the last use, a one-hour cache costs more to write, batches cost half and answer within 24 hours, reasoning is billed as output.
+- Tested in Chrome: page 1 at 375 and 1,280 pixels wide in the dark theme and at 780 in the light theme; page 3 at 375 and 1,280 in the dark theme only.
+
+## What page 2 shows
 
 - **Left figure, one attention head.** Sizes are GPT-2's by default (768 numbers per token, 64 per head); Settings can switch them to a guess at Claude Opus 5.5 (8,192 and 128). Two views:
   - *Close-up* (1 to 12 tokens): every cell drawn, 1 of every 16 numbers at GPT-2 sizes, not to scale. The grid is the same at the Opus sizes; only the labels change. Hovering a Query, Key or attention cell highlights the row and column that produce it. W_K sits behind W_Q and comes forward when a Key cell is hovered.
